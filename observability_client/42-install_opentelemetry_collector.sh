@@ -5,7 +5,7 @@
 # You can either source in the variables from a common config file or
 # set the them in this script.
 
-CONFIG_FILE=deploy_suse_observability_client.cfg
+CONFIG_FILE=deploy_observability_client.cfg
 
 if ! [ -z ${CONFIG_FILE} ]
 then
