@@ -14,7 +14,7 @@ then
     source ${CONFIG_FILE}
 fi
 else
-  CLUSTER_NAME=aicluster01
+  CLUSTER_NAME=c01
   OTEL_NAMESPACE=opentelemetry-collector
   OTEL_HELM_REPO=https://open-telemetry.github.io/opentelemetry-helm-charts
   OTEL_VERSION=
@@ -382,14 +382,14 @@ metadata:
   name: suse-observability-otel-scraper
 rules:
   - apiGroups:
-      - ""
+      - \"\"
     resources:
       - services
       - endpoints
     verbs:
       - list
       - watch
-      -get
+      - get
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
