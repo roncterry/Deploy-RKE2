@@ -128,12 +128,14 @@ display_nvidia_gpu_operator_custom_overrides_file() {
 deploy_nvidia_gpu_operator() {
   case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
     False|false|F|FALSE|N|NO|n|no)
-      echo "COMMAND: kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite"
-      kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+      echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite"
+      kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+      echo
     ;;
     True|true|T|TRUE|Y|YES|y|yes)
-      echo "COMMAND: kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite"
-      kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+      echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite"
+      kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+      echo
     ;;
   esac
 
