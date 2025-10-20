@@ -202,6 +202,7 @@ show_nvidia_gpu_operator_deployment_status() {
   #echo
 
   local NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
+  echo -n "Waiting for the nvidia-feature-discovery pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-feature-discovery | grep -q "Running"
   do
     ((NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT++))
@@ -216,6 +217,7 @@ show_nvidia_gpu_operator_deployment_status() {
   #echo
 
   local NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
+  echo -n "Waiting for the nvidia-device-plugin-daemonset pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-device-plugin-daemonset | grep -q "Running"
   do
     ((NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT++))
