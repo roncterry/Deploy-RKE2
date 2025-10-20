@@ -126,11 +126,30 @@ display_nvidia_gpu_operator_custom_overrides_file() {
 }
 
 deploy_nvidia_gpu_operator() {
-  echo 'echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-agent'
-  echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-agent
+  case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
+    False|false|F|FALSE|N|NO|n|no)
+      echo "COMMAND: kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite"
+      kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+    ;;
+    True|true|T|TRUE|Y|YES|y|yes)
+      echo "COMMAND: kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite"
+      kubectl -n gpu-operator label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+    ;;
+  esac
 
-  echo 'echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-server'
-  echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-server
+  if ! grep -q "/usr/local/nvidia/toolkit" /etc/default/rke2-agent
+  then
+    echo 'COMMAND: echo PATH=${PATH}:/usr/local/nvidia/toolkit >> /etc/default/rke2-agent'
+    echo PATH=${PATH}:/usr/local/nvidia/toolkit >> /etc/default/rke2-agent
+    echo
+  fi
+
+  if ! grep -q "/usr/local/nvidia/toolkit" /etc/default/rke2-server
+  then
+    echo 'COMMAND: echo PATH=${PATH}:/usr/local/nvidia/toolkit >> /etc/default/rke2-server'
+    echo PATH=${PATH}:/usr/local/nvidia/toolkit >> /etc/default/rke2-server
+    echo
+  fi
 
   echo "COMMAND: helm repo add nvidia ${NVIDIA_GPU_OPERATOR_REPO_URL}"
   helm repo add nvidia ${NVIDIA_GPU_OPERATOR_REPO_URL}
@@ -177,8 +196,10 @@ show_nvidia_gpu_operator_deployment_status() {
   echo
 
   echo -n "Waiting for the nvidia-operator-validator pod to become ready "
+  local NVIDIA_OPERATOR_VALIDATOR_COUNT=1
   until kubectl -n gpu-operator get pods | grep nvidia-operator-validator | grep -q "Running"
   do
+    ((NVIDIA_OPERATOR_VALIDATOR_COUNT++))
     echo -n "."
     sleep 2
   done
