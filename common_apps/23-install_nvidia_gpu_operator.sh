@@ -197,16 +197,48 @@ show_nvidia_gpu_operator_deployment_status() {
   kubectl -n gpu-operator rollout status deploy/gpu-operator
   echo
 
-  echo -n "Waiting for the nvidia-operator-validator pod to become ready "
-  local NVIDIA_OPERATOR_VALIDATOR_COUNT=1
-  until kubectl -n gpu-operator get pods | grep nvidia-operator-validator | grep -q "Running"
+  #echo "COMMAND: kubectl -n gpu-operator rollout status deploy/nvidia-feature-discovery"
+  #kubectl -n gpu-operator rollout status deploy/nvidia-feature-discovery
+  #echo
+
+  local NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
+  until kubectl -n gpu-operator get pods | grep nvidia-feature-discovery | grep -q "Running"
   do
-    ((NVIDIA_OPERATOR_VALIDATOR_COUNT++))
+    ((NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT++))
     echo -n "."
     sleep 2
   done
   echo "."
   echo
+
+  #echo "COMMAND: kubectl -n gpu-operator rollout status deploy/nvidia-device-plugin-daemonset"
+  #kubectl -n gpu-operator rollout status deploy/nvidia-device-plugin-daemonset
+  #echo
+
+  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
+  until kubectl -n gpu-operator get pods | grep nvidia-device-plugin-daemonset | grep -q "Running"
+  do
+    ((NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT++))
+    echo -n "."
+    sleep 2
+  done
+  echo "."
+  echo
+
+  case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
+    True|true|T|TRUE|Y|YES|y|yes)
+      echo -n "Waiting for the nvidia-operator-validator pod to become ready "
+      local NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
+      until kubectl -n gpu-operator get pods | grep nvidia-operator-validator | grep -q "Running"
+      do
+        ((NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT++))
+        echo -n "."
+        sleep 2
+      done
+      echo "."
+      echo
+    ;;
+  esac
 
   echo "Waiting for the metadata labels to be created/updated ..."
   sleep 15
