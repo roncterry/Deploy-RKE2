@@ -126,6 +126,12 @@ display_nvidia_gpu_operator_custom_overrides_file() {
 }
 
 deploy_nvidia_gpu_operator() {
+  echo 'echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-agent'
+  echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-agent
+
+  echo 'echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-server'
+  echo PATH=$PATH:/usr/local/nvidia/toolkit >> /etc/default/rke2-server
+
   echo "COMMAND: helm repo add nvidia ${NVIDIA_GPU_OPERATOR_REPO_URL}"
   helm repo add nvidia ${NVIDIA_GPU_OPERATOR_REPO_URL}
   echo
