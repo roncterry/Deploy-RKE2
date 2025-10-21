@@ -134,7 +134,7 @@ deploy_nvidia_gpu_operator() {
     ;;
     True|true|T|TRUE|Y|YES|y|yes)
       echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite"
-      kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+      kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite
       echo
     ;;
   esac
