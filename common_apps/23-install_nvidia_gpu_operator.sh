@@ -200,17 +200,19 @@ show_nvidia_gpu_operator_deployment_status() {
   echo
 
   local NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
+  local NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT=0
   echo -n "Waiting for the nvidia-feature-discovery pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-feature-discovery | grep -q "Running"
   do
-    if [ ${NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT} -ge ${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX} ]
+    if [ "${NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
-      if [ ${NVIDIA_POD_RESET_COUNT} -ge ${NVIDIA_POD_RESET_COUNT_MAX} ]
+      if [ "${NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
         echo "(nvidia-feature-discovery pod not running. Restarting ...)"
         echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-feature-discovery"
         kubectl -n gpu-operator delete pods -l app=gpu-feature-discovery
         NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
+        ((NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT++))
       else
         echo "(!! nvidia-feature-discovery pod reset to many times. Moving on !!)"
         break
@@ -224,17 +226,19 @@ show_nvidia_gpu_operator_deployment_status() {
   echo
 
   local NVIDIA_DCGM_EXPORTER_CHECK_COUNT=0
+  local NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT=0
   echo -n "Waiting for the nvidia-feature-discovery pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-dcgm-exporter | grep -q "Running"
   do
-    if [ ${NVIDIA_DCGM_EXPORTER_CHECK_COUNT} -ge ${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX} ]
+    if [ "${NVIDIA_DCGM_EXPORTER_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
-      if [ ${NVIDIA_POD_RESET_COUNT} -ge ${NVIDIA_POD_RESET_COUNT_MAX} ]
+      if [ "${NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
         echo "(nvidia-dcgm-exporter pod not running. Restarting ...)"
         echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-dcgm-exporter"
         kubectl -n gpu-operator delete pods -l app=gpu-dcgm-exporter
         NVIDIA_DCGM_EXPORTER_CHECK_COUNT=0
+        ((NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT++))
       else
         echo "(!! nvidia-dcgm-exporter pod reset to many times. Moving on !!)"
         break
@@ -248,17 +252,19 @@ show_nvidia_gpu_operator_deployment_status() {
   echo
 
   local NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
+  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT=0
   echo -n "Waiting for the nvidia-device-plugin-daemonset pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-device-plugin-daemonset | grep -q "Running"
   do
-    if [ ${NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT} -ge ${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX} ]
+    if [ "${NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
-      if [ ${NVIDIA_POD_RESET_COUNT} -ge ${NVIDIA_POD_RESET_COUNT_MAX} ]
+      if [ "${NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
         echo "(nvidia-device-plugin-daemonset pod not running. Restarting ...)"
         echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-device-plugin-daemonset"
         kubectl -n gpu-operator delete pods -l app=gpu-device-plugin-daemonset
         NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
+        ((NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT++))
       else
         echo "(!! nvidia-device-plugin-daemonset pod reset to many times. Moving on !!)"
         break
@@ -275,16 +281,18 @@ show_nvidia_gpu_operator_deployment_status() {
     True|true|T|TRUE|Y|YES|y|yes)
       echo -n "Waiting for the nvidia-operator-validator pod to become ready "
       local NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
+      local NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT=0
       until kubectl -n gpu-operator get pods | grep nvidia-operator-validator | grep -q "Running"
       do
-        if [ ${NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT} -ge ${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX} ]
+        if [ "${NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
         then
-          if [ ${NVIDIA_POD_RESET_COUNT} -ge ${NVIDIA_POD_RESET_COUNT_MAX} ]
+          if [ "${NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
           then
             echo "(nvidia-operator-validator pod not running. Restarting ...)"
             echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-operator-validator"
             kubectl -n gpu-operator delete pods -l app=gpu-operator-validator
             NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
+            ((NVIDIA_OPERATOR_VALIDATOR_POD_RESEPOD_RESEPOD_RESET))
           else
             echo "(!! nvidia-operator-validator pod reset to many times. Moving on !!)"
             break
