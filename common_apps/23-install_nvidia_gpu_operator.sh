@@ -14,7 +14,8 @@ then
   fi
 else
   NVIDIA_GPU_OPERATOR_REPO_URL=https://helm.ngc.nvidia.com/nvidia
-  NVIDIA_POD_RUNNING_CHECK_COUNT_MAX=15
+  NVIDIA_POD_RUNNING_CHECK_COUNT_MAX=30
+  NVIDIA_POD_RESET_COUNT_MAX=2
 fi
 
 MANIFEST_FILE=nvidia-gpu-operator.yaml
@@ -168,7 +169,7 @@ deploy_nvidia_gpu_operator() {
   echo
 }
 
-show_nvidia_gpu_operator_deployment_status() {
+check_nvidia_gpu_operator_deployment_status() {
   echo -n "Waiting for namespace to be created "
   until kubectl get namespaces | grep -q gpu-operator
   do
@@ -199,25 +200,47 @@ show_nvidia_gpu_operator_deployment_status() {
   kubectl -n gpu-operator rollout status deploy/gpu-operator
   echo
 
+  sleep 5
+
+  echo "Waiting for the gpu-feature-discovery pod to start ... "
+  until kubectl -n gpu-operator get pods | grep -q gpu-feature-discovery
+  do
+    sleep 2
+  done
   local NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
   local NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT=0
-  echo -n "Waiting for the nvidia-feature-discovery pod to become ready "
-  until kubectl -n gpu-operator get pods | grep nvidia-feature-discovery | grep -q "Running"
+  echo -n "Waiting for the gpu-feature-discovery pod to become ready "
+  until kubectl -n gpu-operator get pods | grep gpu-feature-discovery | grep -q "Running"
   do
+    while kubectl -n gpu-operator get pods | grep -q "The connection to the server 127.0.0.1:6443 was refused"
+    do
+      sleep 5
+    done
+
+    if ! kubectl -n gpu-operator get pods | grep -q gpu-feature-discovery
+    then
+      echo "."
+      echo "(WARNING: gpu-feature-discovery pod no longer found. Continuing ...)"
+      break
+    fi
+
     if [ "${NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
       if [ "${NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
-        echo "(nvidia-feature-discovery pod not running. Restarting ...)"
+        echo "."
+        echo "(WARNING: gpu-feature-discovery pod reset to many times. Moving on ...)"
+        break
+      else
+        echo "."
+        echo "(gpu-feature-discovery pod not running. Restarting ...)"
         echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-feature-discovery"
         kubectl -n gpu-operator delete pods -l app=gpu-feature-discovery
         NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
         ((NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT++))
-      else
-        echo "(!! nvidia-feature-discovery pod reset to many times. Moving on !!)"
-        break
       fi
     fi
+
     ((NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT++))
     echo -n "."
     sleep 2
@@ -225,25 +248,45 @@ show_nvidia_gpu_operator_deployment_status() {
   echo "."
   echo
 
+  echo "Waiting for the nvidia-dcgm-exporter pod to start ... "
+  until kubectl -n gpu-operator get pods | grep -q nvidia-dcgm-exporter
+  do
+    sleep 2
+  done
   local NVIDIA_DCGM_EXPORTER_CHECK_COUNT=0
   local NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT=0
-  echo -n "Waiting for the nvidia-feature-discovery pod to become ready "
+  echo -n "Waiting for the nvidia-dcgm-exporter pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-dcgm-exporter | grep -q "Running"
   do
+    while kubectl -n gpu-operator get pods | grep -q "The connection to the server 127.0.0.1:6443 was refused"
+    do
+      sleep 5
+    done
+
+    if ! kubectl -n gpu-operator get pods | grep -q nvidia-dcgm-exporter
+    then
+      echo "."
+      echo "(WARNING: nvidia-dcgm-exporter pod no longer found. Continuing ...)"
+      break
+    fi
+
     if [ "${NVIDIA_DCGM_EXPORTER_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
       if [ "${NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
+        echo "."
+        echo "(WARNING: nvidia-dcgm-exporter pod reset to many times. Moving on ...)"
+        break
+      else
+        echo "."
         echo "(nvidia-dcgm-exporter pod not running. Restarting ...)"
-        echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-dcgm-exporter"
-        kubectl -n gpu-operator delete pods -l app=gpu-dcgm-exporter
+        echo "COMMAND: kubectl -n gpu-operator delete pods -l app=nvidia-dcgm-exporter"
+        kubectl -n gpu-operator delete pods -l app=nvidia-dcgm-exporter
         NVIDIA_DCGM_EXPORTER_CHECK_COUNT=0
         ((NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT++))
-      else
-        echo "(!! nvidia-dcgm-exporter pod reset to many times. Moving on !!)"
-        break
       fi
     fi
+
     ((NVIDIA_DCGM_EXPORTER_CHECK_COUNT++))
     echo -n "."
     sleep 2
@@ -251,25 +294,45 @@ show_nvidia_gpu_operator_deployment_status() {
   echo "."
   echo
 
+  echo "Waiting for the nvidia-device-plugin-daemonset pod to start ... "
+  until kubectl -n gpu-operator get pods | grep -q nvidia-device-plugin-daemonset
+  do
+    sleep 2
+  done
   local NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
   local NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT=0
   echo -n "Waiting for the nvidia-device-plugin-daemonset pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-device-plugin-daemonset | grep -q "Running"
   do
+    while kubectl -n gpu-operator get pods | grep -q "The connection to the server 127.0.0.1:6443 was refused"
+    do
+      sleep 5
+    done
+
+    if ! kubectl -n gpu-operator get pods | grep -q nvidia-device-plugin-daemonset
+    then
+      echo "."
+      echo "(WARNING: nvidia-device-plugin-daemonset pod no longer found. Continuing ...)"
+      break
+    fi
+
     if [ "${NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
       if [ "${NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
+        echo "."
+        echo "(WARNING: nvidia-device-plugin-daemonset pod reset to many times. Moving on ...)"
+        break
+      else
+        echo "."
         echo "(nvidia-device-plugin-daemonset pod not running. Restarting ...)"
-        echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-device-plugin-daemonset"
-        kubectl -n gpu-operator delete pods -l app=gpu-device-plugin-daemonset
+        echo "COMMAND: kubectl -n gpu-operator delete pods -l app=nvidia-device-plugin-daemonset"
+        kubectl -n gpu-operator delete pods -l app=nvidia-device-plugin-daemonset
         NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
         ((NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT++))
-      else
-        echo "(!! nvidia-device-plugin-daemonset pod reset to many times. Moving on !!)"
-        break
       fi
     fi
+
     ((NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT++))
     echo -n "."
     sleep 2
@@ -279,25 +342,45 @@ show_nvidia_gpu_operator_deployment_status() {
 
   case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
     True|true|T|TRUE|Y|YES|y|yes)
+      echo "Waiting for the nvidia-operator-validator pod to start ... "
+      until kubectl -n gpu-operator get pods | grep -q nvidia-operator-validator
+      do
+        sleep 2
+      done
       echo -n "Waiting for the nvidia-operator-validator pod to become ready "
       local NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
       local NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT=0
       until kubectl -n gpu-operator get pods | grep nvidia-operator-validator | grep -q "Running"
       do
+        while kubectl -n gpu-operator get pods | grep -q "The connection to the server 127.0.0.1:6443 was refused"
+        do
+          sleep 5
+        done
+
+        if ! kubectl -n gpu-operator get pods | grep -q nvidia-operator-validator
+        then
+          echo "."
+          echo "(WARNING: nvidia-operator-validator pod no longer found. Continuing ...)"
+          break
+        fi
+
         if [ "${NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
         then
           if [ "${NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
           then
-            echo "(nvidia-operator-validator pod not running. Restarting ...)"
-            echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-operator-validator"
-            kubectl -n gpu-operator delete pods -l app=gpu-operator-validator
-            NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
-            ((NVIDIA_OPERATOR_VALIDATOR_POD_RESEPOD_RESEPOD_RESET))
-          else
-            echo "(!! nvidia-operator-validator pod reset to many times. Moving on !!)"
+            echo "."
+            echo "WARNING: nvidia-operator-validator pod reset to many times. Moving on ...)"
             break
+          else
+            echo "."
+            echo "(nvidia-operator-validator pod not running. Restarting ...)"
+            echo "COMMAND: kubectl -n gpu-operator delete pods -l app=nvidia-operator-validator"
+            kubectl -n gpu-operator delete pods -l app=nvidia-operator-validator
+            NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
+            ((NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT++))
           fi
         fi
+
         ((NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT++))
         echo -n "."
         sleep 2
@@ -501,7 +584,7 @@ case ${1} in
     then
       display_nvidia_gpu_operator_custom_overrides_file
       deploy_nvidia_gpu_operator
-      show_nvidia_gpu_operator_deployment_status
+      check_nvidia_gpu_operator_deployment_status
       label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
@@ -514,7 +597,7 @@ case ${1} in
     then
       display_nvidia_operator_helm_operator_manifest_file
       deploy_nvidia_gpu_operator_via_the_helm_operator
-      show_nvidia_gpu_operator_deployment_status
+      check_nvidia_gpu_operator_deployment_status
       label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
@@ -529,7 +612,7 @@ case ${1} in
       write_out_nvidia_gpu_operator_helm_operator_manifest_file
       display_nvidia_operator_helm_operator_manifest_file
       deploy_nvidia_gpu_operator_via_the_helm_operator
-      show_nvidia_gpu_operator_deployment_status
+      check_nvidia_gpu_operator_deployment_status
       label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
@@ -560,7 +643,7 @@ case ${1} in
       write_out_nvidia_gpu_operator_custom_overrides_file
       display_nvidia_gpu_operator_custom_overrides_file
       deploy_nvidia_gpu_operator
-      show_nvidia_gpu_operator_deployment_status
+      check_nvidia_gpu_operator_deployment_status
       label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
@@ -579,7 +662,7 @@ case ${1} in
       write_out_nvidia_gpu_operator_custom_overrides_file
       display_nvidia_gpu_operator_custom_overrides_file
       deploy_nvidia_gpu_operator
-      show_nvidia_gpu_operator_deployment_status
+      check_nvidia_gpu_operator_deployment_status
       label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
