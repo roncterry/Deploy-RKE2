@@ -13,10 +13,12 @@ then
     source ${CONFIG_FILE}
   fi
 else
+  NVIDIA_POD_WAIT_COUNT_MAX=30
   NVIDIA_GPU_OPERATOR_REPO_URL=https://helm.ngc.nvidia.com/nvidia
   NVIDIA_POD_RUNNING_CHECK_COUNT_MAX=30
   NVIDIA_POD_RESET_COUNT_MAX=2
 fi
+
 
 MANIFEST_FILE=nvidia-gpu-operator.yaml
 
@@ -202,13 +204,26 @@ check_nvidia_gpu_operator_deployment_status() {
 
   sleep 5
 
+  #---------------------------------------------------------------------------
+  local NVIDIA_GPU_FEATURE_DISCOVERY_WAIT_COUNT=0
+  local NVIDIA_GPU_FEATURE_DISCOVERY_CHECK_COUNT=0
+  local NVIDIA_GPU_FEATURE_DISCOVERY_POD_RESET_COUNT=0
+
   echo "Waiting for the gpu-feature-discovery pod to start ... "
   until kubectl -n gpu-operator get pods | grep -q gpu-feature-discovery
   do
-    sleep 2
+    if [ "${NVIDIA_GPU_FEATURE_DISCOVERY_WAIT_COUNT}" -ge "${NVIDIA_POD_WAIT_COUNT_MAX}" ]
+    then
+      echo "(WARNING: Exceeded wait time for gpu-feature-discovery pod to start. Moving on ...)"
+      NVIDIA_GPU_FEATURE_DISCOVERY_CHECK_COUNT=${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}
+      NVIDIA_GPU_FEATURE_DISCOVERY_POD_RESET_COUNT=${NVIDIA_POD_RESET_COUNT_MAX}
+      break
+    else
+      ((NVIDIA_GPU_FEATURE_DISCOVERY_WAIT_COUNT++))
+      sleep 2
+    fi
   done
-  local NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
-  local NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT=0
+
   echo -n "Waiting for the gpu-feature-discovery pod to become ready "
   until kubectl -n gpu-operator get pods | grep gpu-feature-discovery | grep -q "Running"
   do
@@ -220,13 +235,13 @@ check_nvidia_gpu_operator_deployment_status() {
     if ! kubectl -n gpu-operator get pods | grep -q gpu-feature-discovery
     then
       echo "."
-      echo "(WARNING: gpu-feature-discovery pod no longer found. Continuing ...)"
+      echo "(WARNING: gpu-feature-discovery pod not found. Continuing ...)"
       break
     fi
 
-    if [ "${NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
+    if [ "${NVIDIA_GPU_FEATURE_DISCOVERY_CHECK_COUNT}" -ge "${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}" ]
     then
-      if [ "${NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
+      if [ "${NVIDIA_GPU_FEATURE_DISCOVERY_POD_RESET_COUNT}" -ge "${NVIDIA_POD_RESET_COUNT_MAX}" ]
       then
         echo "."
         echo "(WARNING: gpu-feature-discovery pod reset to many times. Moving on ...)"
@@ -236,25 +251,38 @@ check_nvidia_gpu_operator_deployment_status() {
         echo "(gpu-feature-discovery pod not running. Restarting ...)"
         echo "COMMAND: kubectl -n gpu-operator delete pods -l app=gpu-feature-discovery"
         kubectl -n gpu-operator delete pods -l app=gpu-feature-discovery
-        NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT=0
-        ((NVIDIA_FEATURE_DISCOVERY_POD_RESET_COUNT++))
+        NVIDIA_GPU_FEATURE_DISCOVERY_CHECK_COUNT=0
+        ((NVIDIA_GPU_FEATURE_DISCOVERY_POD_RESET_COUNT++))
       fi
     fi
 
-    ((NVIDIA_FEATURE_DISCOVERY_CHECK_COUNT++))
+    ((NVIDIA_GPU_FEATURE_DISCOVERY_CHECK_COUNT++))
     echo -n "."
     sleep 2
   done
   echo "."
   echo
 
+  #---------------------------------------------------------------------------
+  local NVIDIA_DCGM_EXPORTER_WAIT_COUNT=0
+  local NVIDIA_DCGM_EXPORTER_CHECK_COUNT=0
+  local NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT=0
+
   echo "Waiting for the nvidia-dcgm-exporter pod to start ... "
   until kubectl -n gpu-operator get pods | grep -q nvidia-dcgm-exporter
   do
-    sleep 2
+    if [ "${NVIDIA_DCGM_EXPORTER_WAIT_COUNT}" -ge "${NVIDIA_POD_WAIT_COUNT_MAX}" ]
+    then
+      echo "(WARNING: Exceeded wait time for nvidia-dcgm-exporter pod to start. Moving on ...)"
+      NVIDIA_DCGM_EXPORTER_CHECK_COUNT=${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}
+      NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT=${NVIDIA_POD_RESET_COUNT_MAX}
+      break
+    else
+      ((NVIDIA_DCGM_EXPORTER_WAIT_COUNT++))
+      sleep 2
+    fi
   done
-  local NVIDIA_DCGM_EXPORTER_CHECK_COUNT=0
-  local NVIDIA_DCGM_EXPORTER_POD_RESET_COUNT=0
+
   echo -n "Waiting for the nvidia-dcgm-exporter pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-dcgm-exporter | grep -q "Running"
   do
@@ -266,7 +294,7 @@ check_nvidia_gpu_operator_deployment_status() {
     if ! kubectl -n gpu-operator get pods | grep -q nvidia-dcgm-exporter
     then
       echo "."
-      echo "(WARNING: nvidia-dcgm-exporter pod no longer found. Continuing ...)"
+      echo "(WARNING: nvidia-dcgm-exporter pod not found. Continuing ...)"
       break
     fi
 
@@ -294,13 +322,26 @@ check_nvidia_gpu_operator_deployment_status() {
   echo "."
   echo
 
+  #---------------------------------------------------------------------------
+  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_WAIT_COUNT=0
+  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
+  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT=0
+
   echo "Waiting for the nvidia-device-plugin-daemonset pod to start ... "
   until kubectl -n gpu-operator get pods | grep -q nvidia-device-plugin-daemonset
   do
-    sleep 2
+    if [ "${NVIDIA_DEVICE_PLUGIN_DAEMONSET_WAIT_COUNT}" -ge "${NVIDIA_POD_WAIT_COUNT_MAX}" ]
+    then
+      echo "(WARNING: Exceeded wait time for nvidia-device-plugin-daemonset pod to start. Moving on ...)"
+      NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}
+      NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT=${NVIDIA_POD_RESET_COUNT_MAX}
+      break
+    else
+      ((NVIDIA_DEVICE_PLUGIN_DAEMONSET_WAIT_COUNT++))
+      sleep 2
+    fi
   done
-  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_CHECK_COUNT=0
-  local NVIDIA_DEVICE_PLUGIN_DAEMONSET_POD_RESET_COUNT=0
+
   echo -n "Waiting for the nvidia-device-plugin-daemonset pod to become ready "
   until kubectl -n gpu-operator get pods | grep nvidia-device-plugin-daemonset | grep -q "Running"
   do
@@ -312,7 +353,7 @@ check_nvidia_gpu_operator_deployment_status() {
     if ! kubectl -n gpu-operator get pods | grep -q nvidia-device-plugin-daemonset
     then
       echo "."
-      echo "(WARNING: nvidia-device-plugin-daemonset pod no longer found. Continuing ...)"
+      echo "(WARNING: nvidia-device-plugin-daemonset pod not found. Continuing ...)"
       break
     fi
 
@@ -340,13 +381,28 @@ check_nvidia_gpu_operator_deployment_status() {
   echo "."
   echo
 
+  #---------------------------------------------------------------------------
   case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
     True|true|T|TRUE|Y|YES|y|yes)
+      local NVIDIA_OPERATOR_VALIDATOR_WAIT_COUNT=0
+      local NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
+      local NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT=0
+
       echo "Waiting for the nvidia-operator-validator pod to start ... "
       until kubectl -n gpu-operator get pods | grep -q nvidia-operator-validator
       do
-        sleep 2
+        if [ "${NVIDIA_OPERATOR_VALIDATOR_WAIT_COUNT}" -ge "${NVIDIA_POD_WAIT_COUNT_MAX}" ]
+        then
+          echo "(WARNING: Exceeded wait time for nvidia-operator-validator pod to start. Moving on ...)"
+          NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=${NVIDIA_POD_RUNNING_CHECK_COUNT_MAX}
+          NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT=${NVIDIA_POD_RESET_COUNT_MAX}
+          break
+        else
+          ((NVIDIA_OPERATOR_VALIDATOR_WAIT_COUNT++))
+          sleep 2
+        fi
       done
+
       echo -n "Waiting for the nvidia-operator-validator pod to become ready "
       local NVIDIA_OPERATOR_VALIDATOR_CHECK_COUNT=0
       local NVIDIA_OPERATOR_VALIDATOR_POD_RESET_COUNT=0
