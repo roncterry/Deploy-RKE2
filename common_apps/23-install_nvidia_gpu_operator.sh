@@ -458,7 +458,8 @@ label_gpu_nodes() {
     echo "---------------------"
     echo "Node: ${NODE}"
     echo "---------------------"
-    if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "nvidia.com/gpu.machine"
+    #if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "nvidia.com/gpu.machine"
+    if lspci | grep -qi "nvidia"
     then
       echo GPU_NODE=true
       echo
@@ -636,12 +637,12 @@ case ${1} in
   install_only)
     check_for_kubectl
     check_for_helm
+    label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       display_nvidia_gpu_operator_custom_overrides_file
       deploy_nvidia_gpu_operator
       check_nvidia_gpu_operator_deployment_status
-      label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
     write_out_gpu_time_slicing_config
@@ -649,12 +650,12 @@ case ${1} in
   ;;
   install_only_via_helm_operator)
     check_for_kubectl
+    label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       display_nvidia_operator_helm_operator_manifest_file
       deploy_nvidia_gpu_operator_via_the_helm_operator
       check_nvidia_gpu_operator_deployment_status
-      label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
     write_out_gpu_time_slicing_config
@@ -663,13 +664,13 @@ case ${1} in
   #-----
   via_helm_operator)
     check_for_kubectl
+    label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       write_out_nvidia_gpu_operator_helm_operator_manifest_file
       display_nvidia_operator_helm_operator_manifest_file
       deploy_nvidia_gpu_operator_via_the_helm_operator
       check_nvidia_gpu_operator_deployment_status
-      label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
     write_out_gpu_time_slicing_config
@@ -678,10 +679,11 @@ case ${1} in
   #-----
   label_nodes_only)
     check_for_kubectl
-    if kubectl get pods -A | grep -q nvidia-operator-validator
-    then
-      label_gpu_nodes
-    fi
+    label_gpu_nodes
+    #if kubectl get pods -A | grep -q nvidia-operator-validator
+    #then
+    #  label_gpu_nodes
+    #fi
   ;;
   #-----
   verify_only)
@@ -694,13 +696,13 @@ case ${1} in
   with_time_slicing)
     check_for_kubectl
     check_for_helm
+    label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       write_out_nvidia_gpu_operator_custom_overrides_file
       display_nvidia_gpu_operator_custom_overrides_file
       deploy_nvidia_gpu_operator
       check_nvidia_gpu_operator_deployment_status
-      label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
     write_out_gpu_time_slicing_config
@@ -713,13 +715,13 @@ case ${1} in
   *)
     check_for_kubectl
     check_for_helm
+    label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       write_out_nvidia_gpu_operator_custom_overrides_file
       display_nvidia_gpu_operator_custom_overrides_file
       deploy_nvidia_gpu_operator
       check_nvidia_gpu_operator_deployment_status
-      label_gpu_nodes
     fi
     verify_nvidia_gpu_operator_deployment
   ;;
