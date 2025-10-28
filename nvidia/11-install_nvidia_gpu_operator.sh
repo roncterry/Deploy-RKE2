@@ -84,7 +84,7 @@ spec:
       - name: CONTAINERD_SOCKET
         value: /run/k3s/containerd/containerd.sock
       - name: CONTAINERD_CONFIG
-        value: /var/lib/rancher/rke2/agent/etc/containerd/config.toml.tmpl
+        value: /var/lib/rancher/rke2/agent/etc/containerd/config.toml
       - name: CONTAINERD_RUNTIME_CLASS
         value: nvidia
       - name: CONTAINERD_SET_AS_DEFAULT
@@ -116,7 +116,7 @@ toolkit:
   - name: CONTAINERD_SOCKET
     value: /run/k3s/containerd/containerd.sock
   - name: CONTAINERD_CONFIG
-    value: /var/lib/rancher/rke2/agent/etc/containerd/config.toml.tmpl
+    value: /var/lib/rancher/rke2/agent/etc/containerd/config.toml
   - name: CONTAINERD_RUNTIME_CLASS
     value: nvidia
   - name: CONTAINERD_SET_AS_DEFAULT
@@ -130,19 +130,53 @@ display_nvidia_gpu_operator_custom_overrides_file() {
   echo
 }
 
+label_gpu_nodes() {
+  echo "Labeling GPU nodes ..."
+  for NODE in $(kubectl get nodes | grep -v ^NAME | awk '{ print $1 }')
+  do
+    echo "---------------------"
+    echo "Node: ${NODE}"
+    echo "---------------------"
+    #if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "nvidia.com/gpu.machine"
+    if lspci | grep -qi "nvidia"
+    then
+      echo GPU_NODE=true
+      echo
+
+      case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
+        False|false|F|FALSE|N|NO|n|no)
+          echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite"
+          kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
+          echo
+        ;;
+        True|true|T|TRUE|Y|YES|y|yes)
+          echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite"
+          kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite
+          echo
+        ;;
+      esac
+
+      if ! kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "accelerator"
+      then
+        echo "COMMAND: kubectl label node ${NODE} accelerator=nvidia-gpu"
+        kubectl label node ${NODE} accelerator=nvidia-gpu
+        echo
+      fi
+
+    else
+      echo GPU_NODE=false
+      echo
+      echo "Note: If you think this is incorrect it may be because the metadata labels"
+      echo "      may not have been updated yet."
+      echo "      Wait about 10-15 seconds and run this script again with the 'label_only'"
+      echo "      argument to attempt the labeling of the GPU nodes again."
+      echo
+    fi
+  done
+}
+
 deploy_nvidia_gpu_operator() {
-  case ${NVIDIA_OPERATOR_VALIDATOR_ENABLED} in
-    False|false|F|FALSE|N|NO|n|no)
-      echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite"
-      kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=false --overwrite
-      echo
-    ;;
-    True|true|T|TRUE|Y|YES|y|yes)
-      echo "COMMAND: kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite"
-      kubectl label node ${HOSTNAME} nvidia.com/gpu.deploy.operator-validator=true --overwrite
-      echo
-    ;;
-  esac
+  label_gpu_nodes
 
   if ! grep -q "/usr/local/nvidia/toolkit" /etc/default/rke2-agent
   then
@@ -451,37 +485,6 @@ check_nvidia_gpu_operator_deployment_status() {
   echo
 }
 
-label_gpu_nodes() {
-  echo "Labeling GPU nodes ..."
-  for NODE in $(kubectl get nodes | grep -v ^NAME | awk '{ print $1 }')
-  do
-    echo "---------------------"
-    echo "Node: ${NODE}"
-    echo "---------------------"
-    #if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "nvidia.com/gpu.machine"
-    if lspci | grep -qi "nvidia"
-    then
-      echo GPU_NODE=true
-      echo
-
-      if ! kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "accelerator"
-      then
-        echo "COMMAND: kubectl label node ${NODE} accelerator=nvidia-gpu"
-        kubectl label node ${NODE} accelerator=nvidia-gpu
-        echo
-      fi
-    else
-      echo GPU_NODE=false
-      echo
-      echo "Note: If you think this is incorrect it may be because the metadata labels"
-      echo "      may not have been updated yet."
-      echo "      Wait about 10-15 seconds and run this script again with the 'label_only'"
-      echo "      argument to attempt the labeling of the GPU nodes again."
-      echo
-    fi
-  done
-}
-
 verify_nvidia_gpu_operator_deployment() {
   echo
   echo "Verifying nvidia-gpu-operator deployment:"
@@ -637,7 +640,7 @@ case ${1} in
   install_only)
     check_for_kubectl
     check_for_helm
-    label_gpu_nodes
+    #label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       display_nvidia_gpu_operator_custom_overrides_file
@@ -650,7 +653,7 @@ case ${1} in
   ;;
   install_only_via_helm_operator)
     check_for_kubectl
-    label_gpu_nodes
+    #label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       display_nvidia_operator_helm_operator_manifest_file
@@ -664,7 +667,7 @@ case ${1} in
   #-----
   via_helm_operator)
     check_for_kubectl
-    label_gpu_nodes
+    #label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       write_out_nvidia_gpu_operator_helm_operator_manifest_file
@@ -680,10 +683,6 @@ case ${1} in
   label_nodes_only)
     check_for_kubectl
     label_gpu_nodes
-    #if kubectl get pods -A | grep -q nvidia-operator-validator
-    #then
-    #  label_gpu_nodes
-    #fi
   ;;
   #-----
   verify_only)
@@ -696,7 +695,7 @@ case ${1} in
   with_time_slicing)
     check_for_kubectl
     check_for_helm
-    label_gpu_nodes
+    #label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       write_out_nvidia_gpu_operator_custom_overrides_file
@@ -715,7 +714,7 @@ case ${1} in
   *)
     check_for_kubectl
     check_for_helm
-    label_gpu_nodes
+    #label_gpu_nodes
     if ! kubectl get pods -A | grep -q nvidia-operator-validator
     then
       write_out_nvidia_gpu_operator_custom_overrides_file
