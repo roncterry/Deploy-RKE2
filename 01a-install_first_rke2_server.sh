@@ -63,6 +63,7 @@ install_k8s_distro() {
   echo "Setting sysctl fs.inotify.max_user_instances=1024"
   echo "fs.inotify.max_user_instances=1024" > /etc/sysctl.d/50-fs_inotify_max_user_instances.conf
   sysctl fs.inotify.max_user_instances=1024
+  echo
 
   echo "Downloading ${K8S_DISTRO} installer ..."
   echo "COMMAND: curl -sfL https://get.${K8S_DISTRO}.io --output /root/${K8S_DISTRO}-install.sh"
