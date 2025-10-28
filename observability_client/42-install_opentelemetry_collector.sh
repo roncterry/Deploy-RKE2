@@ -268,21 +268,32 @@ config:
   receivers:
     prometheus:
       config:
-        scrape_configs:
-          - job_name: 'gpu-metrics'
+        scrape_configs:" >> ${CUSTOM_OVERRIDES_FILE}
+
+  case ${OTEL_GPU_METRICS_ENABLED} in
+    True|TRUE|true)
+      echo "          - job_name: 'gpu-metrics'
             scrape_interval: 10s
             scheme: http
             kubernetes_sd_configs:
               - role: endpoints
                 namespaces:
                   names:
-                    - gpu-operator
-#          - job_name: 'milvus'
-#            scrape_interval: 15s
-#            metrics_path: '/metrics'
-#            static_configs:
-#              - targets: ['${OTEL_MILVUS_SERVICE_NAME}.${SUSE_AI_NAMESPACE}.svc.cluster.local:9091']
-  exporters:
+                    - gpu-operator" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+  esac
+
+  case ${OTEL_MILVUS_METRICS_ENABLED} in
+    True|TRUE|true)
+      echo "          - job_name: 'milvus'
+            scrape_interval: 15s
+            metrics_path: '/metrics'
+            static_configs:
+              - targets: ['${OTEL_MILVUS_SERVICE_NAME}.${SUSE_AI_NAMESPACE}.svc.cluster.local:9091']" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+  esac
+
+  echo " exporters:
     otlp:
       endpoint: http://${OBSERVABILITY_OTLP_HOST}:${OBSERVABILITY_OTLP_INGRESS_PORT}
       headers:
@@ -450,7 +461,7 @@ install_opentelemetry_collector() {
   kubectl -n ${OTEL_NAMESPACE} rollout status deploy/opentelemetry-collector
 }
 
-configure_otel_rbac() {
+configure_otel_gpu_rbac() {
   echo "Configuring OpenTelemetry RBAC ..."
   echo
   echo "COMMAND: kubectl apply -n gpu-operator -f otel-rbac.yam"l
@@ -491,7 +502,11 @@ case ${1} in
     check_for_helm
     create_otel_secret
     install_opentelemetry_collector
-    configure_otel_rbac
+    case ${OTEL_GPU_METRICS_ENABLED} in
+      True|TRUE|true)
+        configure_otel_gpu_rbac
+      ;;
+    esac
   ;;
   help|-h|--help)
     usage
@@ -504,8 +519,12 @@ case ${1} in
     create_otel_custom_overrides_file
     display_custom_overrides_file
     install_opentelemetry_collector
-    create_otel_rbac_manifest
-    configure_otel_rbac
+    case ${OTEL_GPU_METRICS_ENABLED} in
+      True|TRUE|true)
+        create_otel_rbac_manifest
+        configure_otel_gpu_rbac
+      ;;
+    esac
   ;;
 esac
 
