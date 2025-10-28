@@ -277,11 +277,11 @@ config:
                 namespaces:
                   names:
                     - gpu-operator
-          - job_name: 'milvus'
-            scrape_interval: 15s
-            metrics_path: '/metrics'
-            static_configs:
-              - targets: ['${OTEL_MILVUS_SERVICE_NAME}.${SUSE_AI_NAMESPACE}.svc.cluster.local:9091']
+#          - job_name: 'milvus'
+#            scrape_interval: 15s
+#            metrics_path: '/metrics'
+#            static_configs:
+#              - targets: ['${OTEL_MILVUS_SERVICE_NAME}.${SUSE_AI_NAMESPACE}.svc.cluster.local:9091']
   exporters:
     otlp:
       endpoint: http://${OBSERVABILITY_OTLP_HOST}:${OBSERVABILITY_OTLP_INGRESS_PORT}
@@ -403,7 +403,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: opentelemetry-collector
-    namespace: ${OBSERVABILITY_NAMESPACE}
+    namespace: ${OTEL_NAMESPACE}
   " > otel-rbac.yaml
   echo
   cat otel-rbac.yaml
