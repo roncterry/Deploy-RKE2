@@ -293,7 +293,7 @@ config:
     ;;
   esac
 
-  echo " exporters:
+  echo "  exporters:
     otlp:
       endpoint: http://${OBSERVABILITY_OTLP_HOST}:${OBSERVABILITY_OTLP_INGRESS_PORT}
       headers:
