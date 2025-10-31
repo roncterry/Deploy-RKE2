@@ -77,8 +77,6 @@ install_observability_agent() {
   echo
 
   echo
-  echo "COMMAND: kubectl -n ${OBSERVABILITY_NAMESPACE} rollout status deploy/suse-observability-agent"
-  kubectl -n ${OBSERVABILITY_NAMESPACE} rollout status deploy/suse-observability-agent
 }
 
 

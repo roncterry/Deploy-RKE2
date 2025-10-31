@@ -457,8 +457,6 @@ install_opentelemetry_collector() {
   fi
 
   echo
-  echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} rollout status deploy/opentelemetry-collector"
-  kubectl -n ${OTEL_NAMESPACE} rollout status deploy/opentelemetry-collector
 }
 
 configure_otel_gpu_rbac() {
