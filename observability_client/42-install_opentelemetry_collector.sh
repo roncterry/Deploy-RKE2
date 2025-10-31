@@ -264,11 +264,15 @@ presets:
   kubernetesAttributes:
     enabled: true
     extractAllPodLabels: true
-config:
-  receivers:
+config:" >> ${CUSTOM_OVERRIDES_FILE}
+
+  if [[ "${OTEL_GPU_METRICS_ENABLED}" == "True" || "${OTEL_MILVUS_METRICS_ENABLED}" == "True" ]]
+  then
+    echo "  receivers:
     prometheus:
       config:
         scrape_configs:" >> ${CUSTOM_OVERRIDES_FILE}
+  fi
 
   case ${OTEL_GPU_METRICS_ENABLED} in
     True|TRUE|true)
