@@ -73,7 +73,7 @@ install_observability_agent() {
   echo
 
   echo "COMMAND: helm upgrade --install --namespace ${OBSERVABILITY_NAMESPACE} --create-namespace --set-string stackstate.apiKey=${OBSERVABILITY_INSTALLATION_API_KEY} --set-string stackstate.cluster.name=${CLUSTER_NAME} --set-string stackstate.url=http://${OBSERVABILITY_HOST}/receiver/stsAgent --set nodeAgent.skipKubeletTLSVerify=true suse-observability-agent suse-observability/suse-observability-agent"
-  helm upgrade --install --namespace ${OBSERVABILITY_NAMESPACE} --create_namespace --set-string stackstate.apiKey=${OBSERVABILITY_INSTALLATION_API_KEY} --set-string stackstate.cluster.name=${CLUSTER_NAME} --set-string stackstate.url=http://${OBSERVABILITY_HOST}/receiver/stsAgent --set nodeAgent.skipKubeletTLSVerify=true suse-observability-agent suse-observability/suse-observability-agent
+  helm upgrade --install --namespace ${OBSERVABILITY_NAMESPACE} --create-namespace --set-string stackstate.apiKey=${OBSERVABILITY_INSTALLATION_API_KEY} --set-string stackstate.cluster.name=${CLUSTER_NAME} --set-string stackstate.url=http://${OBSERVABILITY_HOST}/receiver/stsAgent --set nodeAgent.skipKubeletTLSVerify=true suse-observability-agent suse-observability/suse-observability-agent
   echo
 
   echo
