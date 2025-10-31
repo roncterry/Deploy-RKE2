@@ -191,8 +191,8 @@ create_otel_secret() {
 
     if ! kubectl -n ${OTEL_NAMESPACE} get secrets | grep -v ^NAME | awk '{ print $1 }' | grep -q open-telemetry-collector
     then
-      echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_SERVICE_TOKEN}"
-      kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_SERVICE_TOKEN}
+      echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_INSTALLATION_API_KEY}"
+      kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_INSTALLATION_API_KEY}
       echo
       echo "-----------------------------------------------------------------------------"
       echo
@@ -209,8 +209,8 @@ create_otel_secret() {
     else
       echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} delete secret open-telemetry-collector"
       kubectl -n ${OTEL_NAMESPACE} delete secret open-telemetry-collector
-      echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_API_KEY}"
-      kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_API_KEY}
+      echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_INSTALLATION_API_KEY}"
+      kubectl -n ${OTEL_NAMESPACE} create secret generic open-telemetry-collector --from-literal=API_KEY=${OBSERVABILITY_INSTALLATION_API_KEY}
       echo
       echo "-----------------------------------------------------------------------------"
       echo
