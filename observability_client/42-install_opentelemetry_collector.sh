@@ -5,7 +5,7 @@
 # You can either source in the variables from a common config file or
 # set the them in this script.
 
-CONFIG_FILE=deploy_observability_client.cfg
+CONFIG_FILE=deploy_suse_observability_client.cfg
 
 if ! [ -z ${CONFIG_FILE} ]
 then
@@ -14,7 +14,7 @@ then
     source ${CONFIG_FILE}
 fi
 else
-  CLUSTER_NAME=c01
+  CLUSTER_NAME=aicluster01
   OTEL_NAMESPACE=opentelemetry-collector
   OTEL_HELM_REPO=https://open-telemetry.github.io/opentelemetry-helm-charts
   OTEL_VERSION=
@@ -264,42 +264,27 @@ presets:
   kubernetesAttributes:
     enabled: true
     extractAllPodLabels: true
-config:" >> ${CUSTOM_OVERRIDES_FILE}
-
-  if [[ "${OTEL_GPU_METRICS_ENABLED}" == "True" || "${OTEL_MILVUS_METRICS_ENABLED}" == "True" ]]
-  then
-    echo "  receivers:
+config:
+  receivers:
     prometheus:
       config:
-        scrape_configs:" >> ${CUSTOM_OVERRIDES_FILE}
-  fi
-
-  case ${OTEL_GPU_METRICS_ENABLED} in
-    True|TRUE|true)
-      echo "          - job_name: 'gpu-metrics'
+        scrape_configs:
+          - job_name: 'gpu-metrics'
             scrape_interval: 10s
             scheme: http
             kubernetes_sd_configs:
               - role: endpoints
                 namespaces:
                   names:
-                    - gpu-operator" >> ${CUSTOM_OVERRIDES_FILE}
-    ;;
-  esac
-
-  case ${OTEL_MILVUS_METRICS_ENABLED} in
-    True|TRUE|true)
-      echo "          - job_name: 'milvus'
+                    - gpu-operator
+          - job_name: 'milvus'
             scrape_interval: 15s
             metrics_path: '/metrics'
             static_configs:
-              - targets: ['${OTEL_MILVUS_SERVICE_NAME}.${SUSE_AI_NAMESPACE}.svc.cluster.local:9091']" >> ${CUSTOM_OVERRIDES_FILE}
-    ;;
-  esac
-
-  echo "  exporters:
+              - targets: ['${OTEL_MILVUS_SERVICE_NAME}.${SUSE_AI_NAMESPACE}.svc.cluster.local:9091']
+  exporters:
     otlp:
-      endpoint: http://${OBSERVABILITY_OTLP_HOST}:${OBSERVABILITY_OTLP_INGRESS_PORT}
+      endpoint: ${OBSERVABILITY_OTLP_INGRESS_PROTOCOL}://${OBSERVABILITY_OTLP_HOST}:${OBSERVABILITY_OTLP_INGRESS_PORT}
       headers:
         Authorization: \"SUSEObservability \${env:API_KEY}\"
       tls:
@@ -397,14 +382,14 @@ metadata:
   name: suse-observability-otel-scraper
 rules:
   - apiGroups:
-      - \"\"
+      - ""
     resources:
       - services
       - endpoints
     verbs:
       - list
       - watch
-      - get
+      -get
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -418,7 +403,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: opentelemetry-collector
-    namespace: ${OTEL_NAMESPACE}
+    namespace: ${OBSERVABILITY_NAMESPACE}
   " > otel-rbac.yaml
   echo
   cat otel-rbac.yaml
@@ -461,9 +446,11 @@ install_opentelemetry_collector() {
   fi
 
   echo
+  echo "COMMAND: kubectl -n ${OTEL_NAMESPACE} rollout status deploy/opentelemetry-collector"
+  kubectl -n ${OTEL_NAMESPACE} rollout status deploy/opentelemetry-collector
 }
 
-configure_otel_gpu_rbac() {
+configure_otel_rbac() {
   echo "Configuring OpenTelemetry RBAC ..."
   echo
   echo "COMMAND: kubectl apply -n gpu-operator -f otel-rbac.yam"l
@@ -504,11 +491,7 @@ case ${1} in
     check_for_helm
     create_otel_secret
     install_opentelemetry_collector
-    case ${OTEL_GPU_METRICS_ENABLED} in
-      True|TRUE|true)
-        configure_otel_gpu_rbac
-      ;;
-    esac
+    configure_otel_rbac
   ;;
   help|-h|--help)
     usage
@@ -521,12 +504,8 @@ case ${1} in
     create_otel_custom_overrides_file
     display_custom_overrides_file
     install_opentelemetry_collector
-    case ${OTEL_GPU_METRICS_ENABLED} in
-      True|TRUE|true)
-        create_otel_rbac_manifest
-        configure_otel_gpu_rbac
-      ;;
-    esac
+    create_otel_rbac_manifest
+    configure_otel_rbac
   ;;
 esac
 
