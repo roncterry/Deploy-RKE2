@@ -17,6 +17,7 @@ else
   CLUSTER_NAME=aicluster01
   CLUSTER_TOKEN=${CLUSTER_NAME}
   DOMAIN_NAME=example.com
+  BUILTIN_INGRESS_CONTROLLER=ingress-nginx
   DISABLED_BUILTIN_SERVICE_LIST=
   INSTALL_EXTERNAL_INGRESS_CONTROLLER=false
   EXTERNAL_INGRESS_CONTROLLER_NAMESPACE=kube-system
@@ -59,6 +60,16 @@ check_for_helm() {
   fi
 }
 
+create-kubevip-manifest() {
+  local VIP_INTERFACE=$(ip r | grep "^default" | awk '{ print $5 }')
+
+  curl -sL kube-vip.io/k3s |  vipAddress=${RKE2_CLUSTER_VIP} vipInterface=${VIP_INTERFACE} sh | sudo tee /var/lib/rancher/rke2/server/manifests/kubevip.yaml
+  sed -i 's/k3s/rke2/g' /var/lib/rancher/rke2/server/manifests/kubevip.yaml
+
+  echo "---" >> /var/lib/rancher/rke2/server/manifests/kubevip.yaml
+  curl -sL https://kube-vip.io/manifests/rbac.yaml >> /var/lib/rancher/rke2/server/manifests/kubevip.yaml
+}
+
 install_k8s_distro() {
   echo "Setting sysctl fs.inotify.max_user_instances=1024"
   echo "fs.inotify.max_user_instances=1024" > /etc/sysctl.d/50-fs_inotify_max_user_instances.conf
@@ -80,6 +91,10 @@ install_k8s_distro() {
   echo "Writing out /etc/rancher/${K8S_DISTRO}/config.yaml file ..."
   case ${NODE_TYPE} in
     server)
+      echo "COMMAND: mkdir -p /etc/rancher/${K8S_DISTRO}/server/manifests"
+      mkdir -p /etc/rancher/${K8S_DISTRO}/server/manifests
+      echo
+
       case ${FIRST_SERVER} in
         true)
           echo "token: ${CLUSTER_TOKEN}" > /etc/rancher/${K8S_DISTRO}/config.yaml
@@ -90,7 +105,18 @@ install_k8s_distro() {
           then
             echo "- $(echo ${RKE2_CLUSTER_VIP} | cut -d / -f 1)" >> /etc/rancher/${K8S_DISTRO}/config.yaml
           fi
+          if ! [ -z ${RKE2_CLUSTER_VIP_HOSTNAME} ]
+          then
+            echo "- $(echo ${RKE2_CLUSTER_VIP_HOSTNAME} | cut -d / -f 1)" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          fi
           echo "write-kubeconfig-mode: 600" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          echo "ingress-controller: ${BUILTIN_INGRESS_CONTROLLER}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+
+          #case ${INSTALL_KUBEVIP} in
+          #  true)
+          #    create-kubevip-manifest
+          #  ;;
+          #esac
         ;;
         *)
           echo "server: https://${CLUSTER_NAME}.${DOMAIN_NAME}:9345" > /etc/rancher/${K8S_DISTRO}/config.yaml
@@ -102,7 +128,12 @@ install_k8s_distro() {
           then
             echo "- $(echo ${RKE2_CLUSTER_VIP} | cut -d / -f 1)" >> /etc/rancher/${K8S_DISTRO}/config.yaml
           fi
+          if ! [ -z ${RKE2_CLUSTER_VIP_HOSTNAME} ]
+          then
+            echo "- $(echo ${RKE2_CLUSTER_VIP_HOSTNAME} | cut -d / -f 1)" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          fi
           echo "write-kubeconfig-mode: 600" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          echo "ingress-controller: ${BUILTIN_INGRESS_CONTROLLER}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
         ;;
       esac
 
@@ -120,6 +151,7 @@ install_k8s_distro() {
       echo "token: ${CLUSTER_TOKEN}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
     ;;
   esac
+
   echo
   cat /etc/rancher/${K8S_DISTRO}/config.yaml
   echo
@@ -215,7 +247,7 @@ wait_for_essential_cluster_services_to_be_ready() {
       if [ "${INSTALL_EXTERNAL_INGRESS_CONTROLLER}" == true ] && [ "${EXTERNAL_INGRESS_CONTROLLER_TYPE}" == Deployment ]
       then
         local INGRESS_CONTROLLER_NAMESPACE=${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE}
-        until kubectl -n ${INGRESS_CONTROLLER_NAMESPACE} get deployment | grep -v ^NAME | grep ingress | awk '{ print $6 }' | grep -q [1-9]
+        until kubectl -n ${INGRESS_CONTROLLER_NAMESPACE} get deployment | grep -v ^NAME | grep ${EXTERNAL_INGRESS_CONTROLLER} | awk '{ print $6 }' | grep -q [1-9]
         do
           echo -n "."
           sleep 2
@@ -225,7 +257,7 @@ wait_for_essential_cluster_services_to_be_ready() {
       elif [ "${INSTALL_EXTERNAL_INGRESS_CONTROLLER}" == true ] && [ "${EXTERNAL_INGRESS_CONTROLLER_TYPE}" == DaemonSet ]
       then
         local INGRESS_CONTROLLER_NAMESPACE=${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE}
-        until kubectl -n ${INGRESS_CONTROLLER_NAMESPACE} get daemonset | grep -v ^NAME | grep ingress | awk '{ print $6 }' | grep -q [1-9]
+        until kubectl -n ${INGRESS_CONTROLLER_NAMESPACE} get daemonset | grep -v ^NAME | grep ${EXTERNAL_INGRESS_CONTROLLER} | awk '{ print $6 }' | grep -q [1-9]
         do
           echo -n "."
           sleep 2
@@ -233,12 +265,20 @@ wait_for_essential_cluster_services_to_be_ready() {
         echo "."
         echo
       else
-        until kubectl -n kube-system get daemonset | grep -v ^NAME | grep ingress | awk '{ print $6 }' | grep -q [1-9]
-        do
-          echo -n "."
-          sleep 2
-        done
-        echo "."
+        case ${BUILTIN_INGRESS_CONTROLLER} in
+          none)
+            echo "(No built-in Ingress controller installed. Continuing) ..."
+            echo
+          ;;
+          ingress-nginx|traefik)
+            until kubectl -n kube-system get daemonset | grep -v ^NAME | grep ${BUILTIN_INGRESS_CONTROLLER} | awk '{ print $6 }' | grep -q [1-9]
+            do
+              echo -n "."
+              sleep 2
+            done
+            echo "."
+          ;;
+        esac
         echo
       fi
  
@@ -255,34 +295,38 @@ wait_for_essential_cluster_services_to_be_ready() {
 }
 
 install_external_ingress_controller() {
-  local INGRESS_HELM_REPO_URL=https://kubernetes.github.io/ingress-nginx
-
-  case ${EXTERNAL_INGRESS_CONTROLLER_KIND} in
-    Deployment|deployment)
-      local EXT_ING_CONT_KIND_ARGS="--set controller.kind=Deployment --set controller.replicaCount=${EXTERNAL_INGRESS_CONTROLLER_REPLICAS}"
-    ;;
-    DaemonSet|daemonset|daemonSet)
-      local EXT_ING_CONT_KIND_ARGS="--set controller.kind=DaemonSet"
+  case ${EXTERNAL_INGRESS_CONTROLLER} in
+    ingress-nginx)
+      local INGRESS_HELM_REPO_URL=https://kubernetes.github.io/ingress-nginx
+  
+      case ${EXTERNAL_INGRESS_CONTROLLER_KIND} in
+        Deployment|deployment)
+          local EXT_ING_CONT_KIND_ARGS="--set controller.kind=Deployment --set controller.replicaCount=${EXTERNAL_INGRESS_CONTROLLER_REPLICAS}"
+        ;;
+        DaemonSet|daemonset|daemonSet)
+          local EXT_ING_CONT_KIND_ARGS="--set controller.kind=DaemonSet"
+        ;;
+      esac
+  
+      echo "Installing external ingress controller ..."
+      echo
+      if ! kubectl get all -A | grep ingress | grep -qE '(daemonset|deployment)'
+      then
+        echo "COMMANDS: helm repo add ingress-nginx ${INGRESS_HELM_REPO_URL}
+                helm repo update"
+        helm repo add ingress-nginx ${INGRESS_HELM_REPO_URL}
+        helm repo update
+        echo
+   
+        echo "COMMAND: helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx  --namespace ${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE} --create-namespace --set rbac.create=true ${EXT_ING_CONT_KIND_ARGS} --set ingressClassResource.default=true"
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx  --namespace ${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE} --create-namespace --set rbac.create=true ${EXT_ING_CONT_KIND_ARGS} --set ingressClassResource.default=true
+        echo
+      else
+        echo "(external ingress controller already installed)"
+        echo
+      fi
     ;;
   esac
-
-  echo "Installing external ingress controller ..."
-  echo
-  if ! kubectl get all -A | grep ingress | grep -qE '(daemonset|deployment)'
-  then
-    echo "COMMANDS: helm repo add ingress-nginx ${INGRESS_HELM_REPO_URL}
-            helm repo update"
-    helm repo add ingress-nginx ${INGRESS_HELM_REPO_URL}
-    helm repo update
-    echo
- 
-    echo "COMMAND: helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx  --namespace ${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE} --create-namespace --set rbac.create=true ${EXT_ING_CONT_KIND_ARGS} --set ingressClassResource.default=true"
-    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx  --namespace ${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE} --create-namespace --set rbac.create=true ${EXT_ING_CONT_KIND_ARGS} --set ingressClassResource.default=true
-    echo
-  else
-    echo "(external ingress controller already installed)"
-    echo
-  fi
 }
 
 install_kubevip() {
@@ -328,12 +372,12 @@ esac
 
 wait_for_essential_cluster_services_to_be_ready
 
-case ${INSTALL_KUBEVIP} in
-  true)
-    check_for_helm
-    install_kubevip
-  ;;
-esac
+#case ${INSTALL_KUBEVIP} in
+#  true)
+#    check_for_helm
+#    install_kubevip
+#  ;;
+#esac
  
 echo "-----  The cluster is installed and running  -----"
 echo
