@@ -1,0 +1,1 @@
+SUSE Observability depends on RKE2 and Cert-Manager and a storage option such as Longhorn or local-path-provisioner being installed first.
