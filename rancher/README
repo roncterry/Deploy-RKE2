@@ -1,0 +1,3 @@
+Rancher depends on RKE2 and Cert-Manager being installed first. 
+
+Optionally it can use a storage option such as Longhorn or local-path-provisioner but they are not required.
