@@ -81,8 +81,8 @@ deploy_amd_gpu_operator() {
   helm repo update
   echo
 
-  echo "COMMAND: helm install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESAPCE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}"
-  helm install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESAPCE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}
+  echo "COMMAND: helm install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}"
+  helm install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}
   echo
 }
 
