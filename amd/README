@@ -1,0 +1,1 @@
+The AMD GPU operator depends on RKE2 and Cert-Manager being installed first.
