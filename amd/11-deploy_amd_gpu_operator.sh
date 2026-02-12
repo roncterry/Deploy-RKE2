@@ -96,27 +96,35 @@ check_amd_gpu_operator_deployment_status() {
   echo "."
   echo
 
-  echo -n "Waiting for amd-gpu-operator deployment to be started "
-  until kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} get deployment | grep -q amd-gpu-operator
-  do
-    echo -n "."
-    sleep 2
-  done
-  echo "."
+#  echo -n "Waiting for amd-gpu-operator-gpu-operator-charts-controller-manager deployment to be started "
+#  until kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} get deployment | grep -q amd-gpu-operator-gpu-operator-charts-controller-manager
+#  do
+#    echo -n "."
+#    sleep 2
+#  done
+#  echo "."
+#  echo
+
+  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-gpu-operator-charts-controller-manager"
+  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-gpu-operator-charts-controller-manager
   echo
 
-#  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/gpu-operator-node-feature-discovery-gc"
-#  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/gpu-operator-node-feature-discovery-gc
-#  echo
-#
-#  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/gpu-operator-node-feature-discovery-master"
-#  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/gpu-operator-node-feature-discovery-master
-#  echo
-#
-#  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/gpu-operator"
-#  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/gpu-operator
-#  echo
-#
+  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-kmm-controller"
+  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-kmm-controller
+  echo
+
+  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-kmm-webhook-server"
+  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-kmm-webhook-server
+  echo
+
+  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-node-feature-discovery-gc"
+  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-node-feature-discovery-gc
+  echo
+
+  echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-node-feature-discovery-master"
+  kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-node-feature-discovery-master
+  echo
+
 #  sleep 5
 }
 
