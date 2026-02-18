@@ -20,6 +20,9 @@ else
 
   OWUI_OLLAMA_ENABLED=true
   OWUI_INGRESS_HOST=webui.example.com
+  OLLAMA_GPU_ENABLED=true
+  OLLAMA_GPU_TYPE=nvidia
+  OLLAMA_GPU_NUMBER=1
   OLLAMA_MODEL_0=llama3.2
   OLLAMA_MODEL_1=gemma:2b
   OLLAMA_MODEL_2=
@@ -180,6 +183,17 @@ add_nvidia_gpu_to_custom_overrides_file() {
   esac
 }
 
+add_amd_gpu_to_custom_overrides_file() {
+  case ${OWUI_OLLAMA_ENABLED} in
+    True|true|TRUE)
+      echo "    gpu:
+      enabled: ${OLLAMA_GPU_ENABLED}
+      type: ${OLLAMA_GPU_TYPE}
+      number: ${OLLAMA_GPU_NUMBER}" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+  esac
+}
+
 add_pipelines_to_custom_overrides_file() {
   case ${OWUI_PIPELINES_ENABLED} in
     True|true|TRUE)
@@ -305,7 +319,14 @@ case ${1} in
   custom_overrides_only)
     create_owui_base_custom_overrides_file
     add_ollama_config_to_custom_overrides_file
-    add_nvidia_gpu_to_custom_overrides_file
+    case ${OLLAMA_GPU_TYPE} in
+      nvidia)
+        add_nvidia_gpu_to_custom_overrides_file
+      ;;
+      amd)
+        add_amd_gpu_to_custom_overrides_file
+      ;;
+    esac
     add_pipelines_to_custom_overrides_file
 
     # add extra envvars
@@ -350,7 +371,14 @@ case ${1} in
     log_into_app_collection
     create_owui_base_custom_overrides_file
     add_ollama_config_to_custom_overrides_file
-    add_nvidia_gpu_to_custom_overrides_file
+    case ${OLLAMA_GPU_TYPE} in
+      nvidia)
+        add_nvidia_gpu_to_custom_overrides_file
+      ;;
+      amd)
+        add_amd_gpu_to_custom_overrides_file
+      ;;
+    esac
     add_pipelines_to_custom_overrides_file
 
     # add extra envvars
@@ -368,7 +396,14 @@ case ${1} in
     log_into_app_collection
     create_owui_base_custom_overrides_file
     add_ollama_config_to_custom_overrides_file
-    add_nvidia_gpu_to_custom_overrides_file
+    case ${OLLAMA_GPU_TYPE} in
+      nvidia)
+        add_nvidia_gpu_to_custom_overrides_file
+      ;;
+      amd)
+        add_amd_gpu_to_custom_overrides_file
+      ;;
+    esac
     add_pipelines_to_custom_overrides_file
 
     # add extra envvars

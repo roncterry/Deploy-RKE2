@@ -19,6 +19,9 @@ else
   STORAGE_CLASS_NAME=longhorn
   
   OLLAMA_INGRESS_HOST=ollama.example.com
+  OLLAMA_GPU_ENABLED=true
+  OLLAMA_GPU_TYPE=nvidia
+  OLLAMA_GPU_NUMBER=1
   OLLAMA_MODEL_0=llama3.2:2b
   OLLAMA_MODEL_1=gemma2:2b
   OLLAMA_MODEL_2=
@@ -129,6 +132,13 @@ with_nvidia_gpu() {
   runtimeClassName: ${OLLAMA_RUNTIMECLASSNAME}" >> ${CUSTOM_OVERRIDES_FILE}
 }
 
+with_amd_gpu() {
+  echo "  gpu:
+    enabled: ${OLLAMA_GPU_ENABLED}
+    type: ${OLLAMA_GPU_TYPE}
+    number: ${OLLAMA_GPU_NUMBER}" >> ${CUSTOM_OVERRIDES_FILE}
+}
+
 with_ingress() {
   echo "ingress:
   enabled: true
@@ -195,7 +205,14 @@ usage() {
 case ${1} in
   custom_overrides_only)
     create_ollama_custom_overrides_file
-    with_nvidia_gpu
+    case ${OLLAMA_GPU_TYPE} in
+      nvidia)
+        with_nvidia_gpu
+      ;;
+      amd)
+        with_amd_gpu
+      ;;
+    esac
     with_ingress
     display_custom_overrides_file
   ;;
@@ -219,7 +236,14 @@ case ${1} in
     check_for_helm
     log_into_app_collection
     create_ollama_custom_overrides_file
-    with_nvidia_gpu
+    case ${OLLAMA_GPU_TYPE} in
+      nvidia)
+        with_nvidia_gpu
+      ;;
+      amd)
+        with_amd_gpu
+      ;;
+    esac
     display_custom_overrides_file
     install_ollama
   ;;
@@ -228,7 +252,14 @@ case ${1} in
     check_for_helm
     log_into_app_collection
     create_ollama_custom_overrides_file
-    with_nvidia_gpu
+    case ${OLLAMA_GPU_TYPE} in
+      nvidia)
+        with_nvidia_gpu
+      ;;
+      amd)
+        with_amd_gpu
+      ;;
+    esac
     with_ingress
     display_custom_overrides_file
     install_ollama
