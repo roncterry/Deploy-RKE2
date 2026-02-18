@@ -14,9 +14,12 @@ then
   fi
 else
   AMDGPU_OPERATOR_NAMESPACE=kube-amd-gpu
-  AMDGPU_OPERATOR_VERSION=v1.1.0
-  AMDGPU_OPERATOR_DRIVER_ENABLE=false
   AMDGPU_OPERATOR_REPO_URL=https://rocm.github.io/gpu-operator
+  AMDGPU_OPERATOR_VERSION=
+  AMDGPU_OPERATOR_DRIVER_ENABLE=false
+  AMDGPU_DEVICE_PLUGIN_REPO_URL=https://rocm.github.io/k8s-device-plugin
+  AMDGPU_DEVICE_PLUGIN_VERSION=
+  AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL=https://raw.githubusercontent.com/ROCm/k8s-device-plugin/refs/heads/master
 fi
 
 CUSTOM_OVERRIDES_FILE=amd_gpu_operator_custom_overrides.yaml
@@ -73,8 +76,8 @@ install_amd_gpu_operator() {
     AMDGPU_OPERATOR_VERSION_OPT=""
   fi
 
-  echo "COMMAND: helm repo add rocm https://rocm.github.io/gpu-operator"
-  helm repo add rocm https://rocm.github.io/gpu-operator
+  echo "COMMAND: helm repo add rocm ${AMDGPU_OPERATOR_REPO_URL}"
+  helm repo add rocm ${AMDGPU_OPERATOR_REPO_URL}
   echo
 
   echo "COMMAND: helm repo update"
@@ -87,18 +90,24 @@ install_amd_gpu_operator() {
 }
 
 install_amd_gpu_device_plugin() {
-  echo "COMMAND: helm repo add amd-gpu-device-plugin https://rocm.github.io/k8s-device-plugin/"
-  helm repo add amd-gpu-device-plugin https://rocm.github.io/k8s-device-plugin/
+  if ! [ -z ${AMDGPU_DEVICE_PLUGIN_VERSION} ]
+  then
+    AMDGPU_DEVICE_PLUGIN_VERSION_OPT="--version=${AMDGPU_DEVICE_PLUGIN_VERSION}"
+  else
+    AMDGPU_DEVICE_PLUGIN_VERSION_OPT=""
+  fi
+
+  echo "COMMAND: helm repo add amd-gpu-device-plugin ${AMDGPU_DEVICE_PLUGIN_REPO_URL}"
+  helm repo add amd-gpu-device-plugin ${AMDGPU_DEVICE_PLUGIN_REPO_URL}
   echo
 
   echo "COMMAND: helm repo update"
   helm repo update
   echo
 
-  echo "COMMAND: helm install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace" 
-  helm install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace 
+  echo "COMMAND: helm install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace ${AMDGPU_DEVICE_PLUGIN_VERSION_OPT}" 
+  helm install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace  ${AMDGPU_DEVICE_PLUGIN_VERSION_OPT}
   echo
-
 }
 
 check_amd_gpu_operator_deployment_status() {
@@ -153,16 +162,16 @@ check_amd_gpu_operator_deployment_status() {
 
 label_amd_gpu_nodes() {
   echo
-  echo "COMMAND: wget https://raw.githubusercontent.com/ROCm/k8s-device-plugin/refs/heads/master/k8s-ds-amdgpu-labeller.yaml"
-  wget https://raw.githubusercontent.com/ROCm/k8s-device-plugin/refs/heads/master/k8s-ds-amdgpu-labeller.yaml
+  echo "COMMAND: wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml"
+  wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml
 
   echo
   echo "kubectl create -f k8s-ds-amdgpu-labeller.yaml"
   kubectl create -f k8s-ds-amdgpu-labeller.yaml
 
   #echo
-  #echo "COMMAND: kubectl create -f https://raw.githubusercontent.com/ROCm/k8s-device-plugin/refs/heads/master/k8s-ds-amdgpu-labeller.yaml"
-  #kubectl create -f https://raw.githubusercontent.com/ROCm/k8s-device-plugin/refs/heads/master/k8s-ds-amdgpu-labeller.yaml
+  #echo "COMMAND: kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml"
+  #kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml
 }
 
 show_amdgpu_node_labels() {
