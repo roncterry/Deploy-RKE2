@@ -22,6 +22,7 @@ else
   LH_DEFAULT_REPLICA_COUNT=1
   LH_DEFAULT_CLASS_REPLICA_COUNT=1
   LH_CSI_REPLICA_COUNT=1
+  LH_UI_REPLICA_COUNT=1
   LH_RESERVED_DISK_PERCENTAGE=15
   LH_DEFAULT_SC_FS_TYPE=ext4
   LH_ADDITIONAL_SC_LIST=
@@ -233,19 +234,46 @@ patch_serviceaccounts() {
 write_out_longhorn_custom_overrides_file() {
   echo "Writing out ${CUSTOM_OVERRIDES_FILE} file ..."
   echo
-  echo "
-defaultSettings:
-  defaultReplicaCount: ${LH_DEFAULT_REPLICA_COUNT}
-  storageReservedPercentageForDefaultDisk: ${LH_RESERVED_DISK_PERCENTAGE}
-persistence:
-  defaultClassReplicaCount: ${LH_DEFAULT_CLASS_REPLICA_COUNT}
-  defaultFsType: ${LH_DEFAULT_SC_FS_TYPE}
-csi:
+
+  if ! [ -z ${LH_HELM_CHART} ]
+  then
+    echo "global:
+  imagePullSecrets:
+  - ${IMAGE_PULL_SECRET_NAME}" > ${CUSTOM_OVERRIDES_FILE}
+  else
+    echo "" > ${CUSTOM_OVERRIDES_FILE}
+  fi
+
+  echo "csi:
   attacherReplicaCount: ${LH_CSI_REPLICA_COUNT}
   provisionerReplicaCount: ${LH_CSI_REPLICA_COUNT}
   resizerReplicaCount: ${LH_CSI_REPLICA_COUNT}
-  snapshotterReplicaCount: ${LH_CSI_REPLICA_COUNT}
-" > ${CUSTOM_OVERRIDES_FILE}
+  snapshotterReplicaCount: ${LH_CSI_REPLICA_COUNT}" >> ${CUSTOM_OVERRIDES_FILE}
+
+  echo "defaultSettings:
+  defaultReplicaCount: ${LH_DEFAULT_REPLICA_COUNT}
+  storageReservedPercentageForDefaultDisk: ${LH_RESERVED_DISK_PERCENTAGE}" >> ${CUSTOM_OVERRIDES_FILE}
+  case ${LH_V1_DATAENGINE_ENABLED} in
+    true)
+      echo "  v1DataEngine: true" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+  esac
+  case ${LH_V2_DATAENGINE_ENABLED} in
+    true)
+      echo "  v2DataEngine: true" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+  esac
+
+  if ! [ -z ${LH_UI_REPLICA_COUNT} ]
+  then
+    echo "longhornUI:
+  replicas: ${LH_UI_REPLICAS}  " >> ${CUSTOM_OVERRIDES_FILE}
+  fi
+
+  echo "persistence:
+  dataEngine: ${LH_DATA_ENGINE}
+  defaultClassReplicaCount: ${LH_DEFAULT_CLASS_REPLICA_COUNT}
+  defaultFsType: ${LH_DEFAULT_SC_FS_TYPE}" >> ${CUSTOM_OVERRIDES_FILE}
   echo
 }
 
@@ -273,8 +301,8 @@ deploy_longhorn() {
     helm repo update
     echo
  
-    echo "COMMAND: helm upgrade --install longhorn --namespace ${LH_NAMESPACE} --create-namespace -f longhorn-values.yaml longhorn/longhorn ${LHN_VER_ARG}"
-    helm upgrade --install longhorn --namespace ${LH_NAMESPACE} --create-namespace -f longhorn-values.yaml longhorn/longhorn ${LHN_VER_ARG}
+    echo "COMMAND: helm upgrade --install longhorn --namespace ${LH_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} longhorn/longhorn ${LHN_VER_ARG}"
+    helm upgrade --install longhorn --namespace ${LH_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} longhorn/longhorn ${LHN_VER_ARG}
     echo
  
     echo "COMMAND: kubectl -n ${LH_NAMESPACE} rollout status deploy/longhorn-driver-deployer"
@@ -284,8 +312,8 @@ deploy_longhorn() {
     log_into_app_collection
     create_app_collection_secret
 
-    echo "COMMAND: helm upgrade --install longhorn ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} -f longhorn-values.yaml ${LHN_VER_ARG}"
-    helm upgrade --install longhorn ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} -f longhorn-values.yaml ${LHN_VER_ARG}
+    echo "COMMAND: helm upgrade --install longhorn ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} -f ${CUSTOM_OVERRIDES_FILE} ${LHN_VER_ARG}"
+    helm upgrade --install longhorn ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} -f ${CUSTOM_OVERRIDES_FILE} ${LHN_VER_ARG}
   fi
 
   until kubectl -n ${LH_NAMESPACE} rollout status deploy/longhorn-ui > /dev/null 2>&1
