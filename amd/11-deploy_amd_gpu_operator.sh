@@ -22,7 +22,8 @@ else
   AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL=https://raw.githubusercontent.com/ROCm/k8s-device-plugin/refs/heads/master
 fi
 
-CUSTOM_OVERRIDES_FILE=amd_gpu_operator_custom_overrides.yaml
+AMDGPU_OPERATOR_CUSTOM_OVERRIDES_FILE=amdgpu_operator_custom_overrides.yaml
+AMDGPU_DEVICE_PLUGIN_CUSTOM_OVERRIDES_FILE=amdgpu_device_plugin_custom_overrides.yaml
 
 ##############################################################################
 
@@ -60,15 +61,23 @@ check_for_helm() {
 
 ##############################################################################
 
-write_out_amd_gpu_operator_custom_overrides_file() {
-  echo "Writing out ${CUSTOM_OVERRIDES_FILE} ..."
+write_out_amdgpu_operator_custom_overrides_file() {
+  echo "Writing out ${AMDGPU_OPERATOR_CUSTOM_OVERRIDES_FILE} ..."
   echo
 
   echo "
-" > ${CUSTOM_OVERRIDES_FILE}
+" > ${AMDGPU_OPERATOR_CUSTOM_OVERRIDES_FILE}
 }
 
-install_amd_gpu_operator() {
+write_out_amdgpu_devide_plugin_custom_overrides_file() {
+  echo "Writing out ${AMDGPU_DEVICE_PLUGIN_CUSTOM_OVERRIDES_FILE} ..."
+  echo
+
+  echo "
+" > ${AMDGPU_OPERATOR_CUSTOM_OVERRIDES_FILE}
+}
+
+install_amdgpu_operator() {
   if ! [ -z ${AMDGPU_OPERATOR_VERSION} ]
   then
     AMDGPU_OPERATOR_VERSION_OPT="--version=${AMDGPU_OPERATOR_VERSION}"
@@ -84,12 +93,12 @@ install_amd_gpu_operator() {
   helm repo update
   echo
 
-  echo "COMMAND: helm install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}"
-  helm install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}
+  echo "COMMAND: helm upgrade --install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}"
+  helm upgrade --install amd-gpu-operator rocm/gpu-operator-charts --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace --set deviceConfig.spec.driver.enable=${AMDGPU_OPERATOR_DRIVER_ENABLE} ${AMDGPU_OPERATOR_VERSION_OPT}
   echo
 }
 
-install_amd_gpu_device_plugin() {
+install_amdgpu_device_plugin() {
   if ! [ -z ${AMDGPU_DEVICE_PLUGIN_VERSION} ]
   then
     AMDGPU_DEVICE_PLUGIN_VERSION_OPT="--version=${AMDGPU_DEVICE_PLUGIN_VERSION}"
@@ -105,12 +114,12 @@ install_amd_gpu_device_plugin() {
   helm repo update
   echo
 
-  echo "COMMAND: helm install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace ${AMDGPU_DEVICE_PLUGIN_VERSION_OPT}" 
-  helm install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace  ${AMDGPU_DEVICE_PLUGIN_VERSION_OPT}
+  echo "COMMAND: helm upgrade --install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace ${AMDGPU_DEVICE_PLUGIN_VERSION_OPT}" 
+  helm upgrade --install amd-gpu amd-gpu-device-plugin/amd-gpu --namespace ${AMDGPU_OPERATOR_NAMESPACE} --create-namespace  ${AMDGPU_DEVICE_PLUGIN_VERSION_OPT}
   echo
 }
 
-check_amd_gpu_operator_deployment_status() {
+check_amdgpu_operator_deployment_status() {
   echo -n "Waiting for namespace to be created "
   until kubectl get namespaces | grep -q ${AMDGPU_OPERATOR_NAMESPACE}
   do
@@ -160,18 +169,24 @@ check_amd_gpu_operator_deployment_status() {
 #  sleep 5
 }
 
-label_amd_gpu_nodes() {
+retrieve_node_labeller_manifest() {
   echo
-  echo "COMMAND: wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml"
-  wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml
+  echo "COMMAND: wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
+  wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
+  echo
 
+  cat ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
   echo
-  echo "kubectl create -f k8s-ds-amdgpu-labeller.yaml"
-  kubectl create -f k8s-ds-amdgpu-labeller.yaml
+}
+
+label_amdgpu_nodes() {
+  echo
+  echo "kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
+  kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
 
   #echo
-  #echo "COMMAND: kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml"
-  #kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/k8s-ds-amdgpu-labeller.yaml
+  #echo "COMMAND: kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
+  #kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
 }
 
 show_amdgpu_node_labels() {
@@ -203,31 +218,45 @@ usage() {
 case ${1} in
   verify_only)
     check_for_kubectl
+
+    show_amdgpu_node_labels
   ;;
   help|-h|--help)
     usage
     exit
   ;;
+  config_only)
+    check_for_kubectl
+
+    #write_out_amdgpu_operator_custom_overrides_file
+    #write_out_amdgpu_devide_plugin_custom_overrides_file
+    retrieve_node_labeller_manifest
+  ;;
   label_only)
     check_for_kubectl
-    label_amd_gpu_nodes
+
+    retrieve_node_labeller_manifest
+    label_amdgpu_nodes
     show_amdgpu_node_labels
   ;;
   verify_only)
     check_for_kubectl
-    check_amd_gpu_operator_deployment_status
+
+    check_amdgpu_operator_deployment_status
     show_amdgpu_node_labels
   ;;
   *)
     check_for_kubectl
     check_for_helm
 
-    install_amd_gpu_operator
-    install_amd_gpu_device_plugin
-    check_amd_gpu_operator_deployment_status
-    label_amd_gpu_nodes
+    #write_out_amdgpu_operator_custom_overrides_file
+    install_amdgpu_operator
+    #write_out_amdgpu_devide_plugin_custom_overrides_file
+    install_amdgpu_device_plugin
+    check_amdgpu_operator_deployment_status
+    retrieve_node_labeller_manifest
+    label_amdgpu_nodes
     show_amdgpu_node_labels
-
   ;;
 esac
 
