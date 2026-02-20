@@ -1,5 +1,4 @@
-#!/bin/basah
-
+#!/bin/bash
 
 ##############################################################################
 
@@ -101,7 +100,7 @@ log_into_app_collection() {
   echo
 }
 
-create_suse_storage_custom_overrides_file() {
+write_out_suse_storage_custom_overrides_file() {
   echo "Writing out ${CUSTOM_OVERRIDES_FILE} file ..."
   echo
 
@@ -160,11 +159,11 @@ deploy_suse_storage() {
     local LHN_VER_ARG="--version ${LH_VERSION}"
   fi
 
-  check_for_imgage_pull_secret
+  check_for_image_pull_secret
   log_into_app_collection
 
-  echo "COMMAND: helm upgrade --install suse-storage ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace --set -f ${CUSTOM_OVERRIDES_FILE} ${LHN_VER_ARG}"
-  helm upgrade --install suse-storage ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace --set -f ${CUSTOM_OVERRIDES_FILE} ${LHN_VER_ARG}
+  echo "COMMAND: helm upgrade --install suse-storage ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${LHN_VER_ARG}"
+  helm upgrade --install suse-storage ${LH_HELM_CHART} --namespace ${LH_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${LHN_VER_ARG}
   echo
 }
 
