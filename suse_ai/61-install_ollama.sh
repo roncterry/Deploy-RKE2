@@ -89,13 +89,26 @@ create_ollama_custom_overrides_file() {
   echo "
 global:
   imagePullSecrets:
-  - ${IMAGE_PULL_SECRET_NAME}
-persistence:
-  enabled: true
-  storageClass: ${STORAGE_CLASS_NAME}
-ollama:
+  - ${IMAGE_PULL_SECRET_NAME}" > ${CUSTOM_OVERRIDES_FILE}
+
+  case ${OLLAMA_PERSISTENT_VOLUME_ENABLED} in
+    true)
+      echo "persistentVolume:
+  enabled: ${OLLAMA_PERSISTENT_VOLUME_ENABLED}
+  size: ${OLLAMA_PERSISTENT_VOLUME_SIZE}
+  accessModes:
+    - ReadWriteOnce
+  storageClass: ${STORAGE_CLASS_NAME}" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+    false)
+      echo "persistentVolume:
+  enabled: ${OLLAMA_PERSISTENT_VOLUME_ENABLED}" >> ${CUSTOM_OVERRIDES_FILE}
+    ;;
+  esac
+
+echo "ollama:
   models:
-    pull:" > ${CUSTOM_OVERRIDES_FILE}
+    pull:" >> ${CUSTOM_OVERRIDES_FILE}
 
   if ! [ -z ${OLLAMA_MODEL_0} ]
   then
@@ -137,6 +150,33 @@ with_amd_gpu() {
     enabled: ${OLLAMA_GPU_ENABLED}
     type: ${OLLAMA_GPU_TYPE}
     number: ${OLLAMA_GPU_NUMBER}" >> ${CUSTOM_OVERRIDES_FILE}
+
+      echo "extraEnv:" >> ${CUSTOM_OVERRIDES_FILE}
+
+      if ! [ -z ${OLLAMA_AMDGPU_HSA_OVERRIDE_GFX_VERSION} ]
+      then
+        echo "  - name: HSA_OVERRIDE_GFX_VERSION" >> ${CUSTOM_OVERRIDES_FILE}
+        echo "    value: ${OLLAMA_AMDGPU_HSA_OVERRIDE_GFX_VERSION}" >> ${CUSTOM_OVERRIDES_FILE}
+      fi
+
+      if ! [ -z ${OLLAMA_AMDGPU_HSA_ENABLE_SDMA} ]
+      then
+        echo "  - name: HSA_ENABLE_SDMA" >> ${CUSTOM_OVERRIDES_FILE}
+        echo "    value: ${OLLAMA_AMDGPU_HSA_ENABLE_SDMA}" >> ${CUSTOM_OVERRIDES_FILE}
+      fi
+
+      if ! [ -z ${OLLAMA_AMDGPU_ROCR_VISIBLE_DEVICES} ]
+      then
+        echo "  - name: ROCR_VISIBLE_DEVICES" >> ${CUSTOM_OVERRIDES_FILE}
+        echo "    value: ${OLLAMA_AMDGPU_ROCR_VISIBLE_DEVICES}" >> ${CUSTOM_OVERRIDES_FILE}
+      fi
+
+      echo "nodeSelector:
+  accelerator: amd-gpu" >> ${CUSTOM_OVERRIDES_FILE}
+
+#    echo "resources:
+#  limits
+#    ://amd.com: ${OLLAMA_GPU_NUMBER}" >> ${CUSTOM_OVERRIDES_FILE}
 }
 
 with_ingress() {
