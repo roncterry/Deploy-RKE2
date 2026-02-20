@@ -51,16 +51,16 @@ check_amdgpu_driver_install() {
   echo "                             ROCm Info"
   echo "--------------------------------------------------------------------------"
   echo
-  echo "COMMAND: rocminfo"
-  rocminfo
+  echo "COMMAND: rocminfo | grep -E '^=.*|^HSA.*|^\*.*|^Agent .*|ROCk module version|Runtime .*Version:|^ .Name:|Marketing Name:|Device Type:'"
+  rocminfo | grep -E '^=.*|^HSA.*|^\*.*|^Agent .*|ROCk module version|Runtime .*Version:|^ .Name:|Marketing Name:|Device Type:'
   echo
 
   echo "--------------------------------------------------------------------------"
   echo "                            OpenCL Info"
   echo "--------------------------------------------------------------------------"
   echo
-  echo "COMMAND: clinfo"
-  clinfo
+  echo "COMMAND: clinfo | grep -E 'Number of devices:|Board name:|^ .Name:|Driver version:'"
+  clinfo | grep -E 'Number of devices:|Board name:|^ .Name:|Driver version:'
   echo
   echo "--------------------------------------------------------------------------"
 
