@@ -196,7 +196,7 @@ retrieve_node_labeller_manifest() {
 
 }
 
-label_amdgpu_nodes() {
+apply_node_labeller_manifest() {
   echo
   echo "kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
   kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
@@ -222,15 +222,31 @@ label_amdgpu_nodes() {
   done
   echo "."
   echo
+}
 
+check_for_amdgpu_driver_loaded() {
+  for GPU in $(lspci | grep VGA | awk '{ print $1 }')
+  do 
+    if $(lspci -vs ${GPU}|grep "Kernel driver in use:"|grep -q amdgpu)
+    then 
+      export AMDGPU_DRIVER_LOADED=true
+    else 
+      export AMDGPU_DRIVER_LOADED=false
+    fi
+  done
+}
+
+label_amdgpu_nodes() {
   for NODE in $(kubectl get nodes | grep -v ^NAME | awk '{ print $1 }')
   do
     echo "---------------------"
     echo "Node: ${NODE}"
     echo "---------------------"
- 
-    if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | grep -q "amd.com/gpu"
+
+    ## FIXME: This needs a better way to discover on all nodes both local and remote.
+    #if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | grep -q "amd.com/gpu"
     #if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "amd.com/gpu"
+    if [ ${AMDGPU_DRIVER_LOADED} == true ]
     then
       echo GPU_NODE=true
       echo
