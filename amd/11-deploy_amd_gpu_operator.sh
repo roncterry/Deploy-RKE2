@@ -16,6 +16,7 @@ else
   AMDGPU_OPERATOR_NAMESPACE=kube-amd-gpu
   AMDGPU_OPERATOR_REPO_URL=https://rocm.github.io/gpu-operator
   AMDGPU_OPERATOR_VERSION=
+  AMDGPU_OPERATOR_TYPE=operator
   AMDGPU_OPERATOR_DRIVER_ENABLE=false
   AMDGPU_DEVICE_PLUGIN_REPO_URL=https://rocm.github.io/k8s-device-plugin
   AMDGPU_DEVICE_PLUGIN_VERSION=
@@ -69,7 +70,7 @@ write_out_amdgpu_operator_custom_overrides_file() {
 " > ${AMDGPU_OPERATOR_CUSTOM_OVERRIDES_FILE}
 }
 
-write_out_amdgpu_devide_plugin_custom_overrides_file() {
+write_out_amdgpu_device_plugin_custom_overrides_file() {
   echo "Writing out ${AMDGPU_DEVICE_PLUGIN_CUSTOM_OVERRIDES_FILE} ..."
   echo
 
@@ -157,6 +158,17 @@ check_amdgpu_operator_deployment_status() {
   echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-node-feature-discovery-master"
   kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status deploy/amd-gpu-operator-node-feature-discovery-master
   echo
+}
+
+check_amdgpu_device_plugin_deployment_status() {
+  echo -n "Waiting for namespace to be created "
+  until kubectl get namespaces | grep -q ${AMDGPU_OPERATOR_NAMESPACE}
+  do
+    echo -n "."
+    sleep 2
+  done
+  echo "."
+  echo
 
   echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status daemonset/amd-gpu-device-plugin-daemonset"
   kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status daemonset/amd-gpu-device-plugin-daemonset
@@ -165,44 +177,153 @@ check_amdgpu_operator_deployment_status() {
   echo "COMMAND: kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status daemonset/amd-gpu-operator-node-feature-discovery-worker"
   kubectl -n ${AMDGPU_OPERATOR_NAMESPACE} rollout status daemonset/amd-gpu-operator-node-feature-discovery-worker
   echo
-
-#  sleep 5
 }
 
 retrieve_node_labeller_manifest() {
-  echo
-  echo "COMMAND: wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
-  wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
-  echo
+  if ! [ -e ${AMDGPU_NODE_LABELLER_MANIFEST_FILE} ]
+  then
+    echo
+    echo "COMMAND: wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
+    wget ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
+    echo
+ 
+    cat ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
+    echo
+  else
+    echo "(Node labeller manifest already present.)"
+    echo
+  fi
 
-  cat ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
-  echo
 }
 
 label_amdgpu_nodes() {
   echo
   echo "kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
   kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
+  echo
 
   #echo
   #echo "COMMAND: kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
   #kubectl create -f ${AMDGPU_NODE_LABELLER_MANIFEST_BASE_URL}/${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
+
+  echo -n "Waiting for the labeller daemonset to be ready ."
+  until kubectl -n kube-system get pod | grep amdgpu-labeller-daemonset | grep -q Running
+  do
+    echo -n "."
+    sleep 1
+  done
+  echo "."
+
+  echo -n "Waiting for the labeller to label nodes ."
+  until kubectl get nodes -o yaml | grep -q "amd.com/gpu"
+  do
+    echo -n "."
+    sleep 1
+  done
+  echo "."
+  echo
+
+  for NODE in $(kubectl get nodes | grep -v ^NAME | awk '{ print $1 }')
+  do
+    echo "---------------------"
+    echo "Node: ${NODE}"
+    echo "---------------------"
+ 
+    if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | grep -q "amd.com/gpu"
+    #if kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "amd.com/gpu"
+    then
+      echo GPU_NODE=true
+      echo
+ 
+      if ! kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | grep -q "accelerator"
+      #if ! kubectl get node ${NODE} -o jsonpath='{.metadata.labels}' | jq | grep -q "accelerator"
+      then
+        echo "COMMAND: kubectl label node ${NODE} accelerator=amd-gpu"
+        kubectl label node ${NODE} accelerator=amd-gpu
+        echo
+      fi
+ 
+    else
+      echo GPU_NODE=false
+      echo
+      echo "Note: If you think this is incorrect it may be because the metadata labels"
+      echo "      may not have been updated yet."
+      echo "      Wait about 10-15 seconds and run this script again with the 'label_only'"
+      echo "      argument to attempt the labeling of the GPU nodes again."
+      echo
+    fi
+  done
 }
 
 show_amdgpu_node_labels() {
   echo
-  echo "COMMAND: kubectl get nodes -o yaml | grep amd.com"
-  kubectl get nodes -o yaml | grep amd.com
+  echo "COMMAND: kubectl get nodes -o yaml | grep -E 'amd.com|accelerator'"
+  kubectl get nodes -o yaml | grep -E 'amd.com|accelerator'
+  echo
+}
+
+uninstall_amdgpu_device_plugin() {
+  echo
+  echo "COMMAND: helm -n ${AMDGPU_OPERATOR_NAMESPACE} uninstall amd-gpu"
+  helm -n ${AMDGPU_OPERATOR_NAMESPACE} uninstall amd-gpu
+  echo
+}
+
+uninstall_amdgpu_operator() {
+  echo
+  echo "COMMAND: helm -n ${AMDGPU_OPERATOR_NAMESPACE} uninstall amd-gpu-operator"
+  helm -n ${AMDGPU_OPERATOR_NAMESPACE} uninstall amd-gpu-operator
+  echo
+}
+
+uninstall_node_labeller() {
+  if ! [ -e ${AMDGPU_NODE_LABELLER_MANIFEST_FILE} ]
+  then
+    retrieve_node_labeller_manifest
+  fi
+
+  echo
+  echo "COMMAND: kubectl delete -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}"
+  kubectl delete -f ${AMDGPU_NODE_LABELLER_MANIFEST_FILE}
+  echo
+}
+
+remove_labels_from_nodes() {
+  echo
+  for NODE in $(kubectl get nodes | grep -v ^NAME | awk '{ print $1 }')
+  do
+    echo "---------------------"
+    echo "Node: ${NODE}"
+    echo "---------------------"
+
+    for LABEL in $(kubectl get nodes -o yaml | grep amd.com |cut -d : -f 1) 
+    do 
+      echo "COMMAND: kubectl label node ${NODE} ${LABEL}-"
+      kubectl label node ${NODE} ${LABEL}- 
+    done
+    echo
+
+    for ANNOTATION in $(kubectl get nodes -o yaml | grep amd.com |cut -d : -f 1) 
+    do 
+      echo "COMMAND: kubectl annotate node ${NODE} ${ANNOTATION}-"
+      kubectl annotate node ${NODE} ${ANNOTATION}- 
+    done
+    echo
+
+    kubectl label node ${NODE} accelerator-
+
+  done
   echo
 }
 
 usage() {
   echo
-  echo "USAGE: ${0} [label_only|verify_only]"
+  echo "USAGE: ${0} [label_only|verify_only|uninstall]"
   echo
   echo "Options: "
   echo "    label_only           (only label the GPU nodes)"
   echo "    verify_only          (only display verification of the GPU nodes)"
+  echo "    uninstall            (uninstall the operator)"
   echo
   echo "If no option is supplied the installation is performent using "
   echo "'helm upgrade --install'."
@@ -210,6 +331,7 @@ usage() {
   echo "Example: ${0}"
   echo "         ${0} label_only"
   echo "         ${0} verify_only"
+  echo "         ${0} uninstall"
   echo
 }
 
@@ -228,8 +350,15 @@ case ${1} in
   config_only)
     check_for_kubectl
 
-    #write_out_amdgpu_operator_custom_overrides_file
-    #write_out_amdgpu_devide_plugin_custom_overrides_file
+    #case ${AMDGPU_OPERATOR_TYPE} in
+    #  operator)
+    #    write_out_amdgpu_operator_custom_overrides_file
+    #  ;;
+    #  device-plugin)
+    #    write_out_amdgpu_device_plugin_custom_overrides_file
+    #  ;;
+    #esac
+
     retrieve_node_labeller_manifest
   ;;
   label_only)
@@ -242,18 +371,47 @@ case ${1} in
   verify_only)
     check_for_kubectl
 
-    check_amdgpu_operator_deployment_status
+    case ${AMDGPU_OPERATOR_TYPE} in
+      operator)
+        check_amdgpu_operator_deployment_status
+      ;;
+      device-plugin)
+        check_amdgpu_device_plugin_deployment_status
+      ;;
+    esac
+
     show_amdgpu_node_labels
+  ;;
+  uninstall)
+    case ${AMDGPU_OPERATOR_TYPE} in
+      operator)
+        uninstall_amdgpu_operator
+      ;;
+      device-plugin)
+        uninstall_amdgpu_device_plugin
+      ;;
+    esac
+
+    uninstall_node_labeller
+    remove_labels_from_nodes
   ;;
   *)
     check_for_kubectl
     check_for_helm
 
-    #write_out_amdgpu_operator_custom_overrides_file
-    install_amdgpu_operator
-    #write_out_amdgpu_devide_plugin_custom_overrides_file
-    install_amdgpu_device_plugin
-    check_amdgpu_operator_deployment_status
+    case ${AMDGPU_OPERATOR_TYPE} in
+      operator)
+        #write_out_amdgpu_operator_custom_overrides_file
+        install_amdgpu_operator
+        check_amdgpu_operator_deployment_status
+      ;;
+      device-plugin)
+        #write_out_amdgpu_device_plugin_custom_overrides_file
+        install_amdgpu_device_plugin
+        check_amdgpu_device_plugin_deployment_status
+      ;;
+    esac
+
     retrieve_node_labeller_manifest
     label_amdgpu_nodes
     show_amdgpu_node_labels
