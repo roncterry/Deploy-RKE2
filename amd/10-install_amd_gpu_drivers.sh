@@ -22,11 +22,10 @@ fi
 
 ##############################################################################
 
-
-install_amdgpu_driver_and_rocm() {
+install_upstream_amdgpu_driver() {
   echo
   echo "=============================================================================="
-  echo "                     Installing AMD Radeon & ROCm Drivers"
+  echo "                  Installing Upstream AMD GPU Drivers"
   echo "=============================================================================="
 
   echo "COMMAND: zypper --no-gpg-checks install ${AMDGPU_PKG_URL}"
@@ -40,13 +39,35 @@ install_amdgpu_driver_and_rocm() {
   echo "COMMAND: zypper install amdgpu-dkms"
   zypper --non-interactive install amdgpu-dkms
   echo
+}
 
-  echo "COMMAND: zypper install rocm"
+install_rocm() {
+  echo
+  echo "=============================================================================="
+  echo "                     Installing AMD Radeon Drivers"
+  echo "=============================================================================="
+
+  if ! zypper lr | grep -E -q 'rocm|ROCm|ROCM'
+  then
+    echo "[ROCm-${AMDGPU_ROCM_VER}]
+name=ROCm${AMDGPU_ROCM_VER}
+baseurl=https://repo.radeon.com/rocm/zyp/${AMDGPU_ROCM_VER}/main
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key" > /etc/zypp/repos.d/rocm.repo
+  fi
+  echo
+
+  echo "COMMAND: zypper --gpg-auto-import-keys refresh"
+  zypper --gpg-auto-import-keys refresh
+  echo
+
+  echo "COMMAND: zypper --non-interactive install rocm"
   zypper --non-interactive install rocm
   echo
 }
 
-check_amdgpu_driver_install() {
+check_amdgpu_driver() {
   echo "--------------------------------------------------------------------------"
   echo "                             ROCm Info"
   echo "--------------------------------------------------------------------------"
@@ -82,16 +103,34 @@ uninstall_amdgpu_driver_and_rocm() {
   echo "                    Uninstalling AMD Radeon & ROCm Drivers"
   echo "=============================================================================="
 
-  echo "COMMAND: zypper -n remove amdgpu-dkms andgpu-dkms-firmware rocm rocm-core amdgpu-core"
-  zypper -n remove amdgpu-dkms andgpu-dkms-firmware rocm rocm-core amdgpu-core
+  echo "COMMAND: zypper -n remove amdgpu-dkms amdgpu-dkms-firmware rocm rocm-core amdgpu-core"
+  zypper -n remove amdgpu-dkms amdgpu-dkms-firmware rocm rocm-core amdgpu-core
   echo
+
+  for PKG in $(rpm -qa | grep amdgpu-install)
+  do
+    echo "COMMAND: zypper -n remove ${PKG}"
+    zypper -n remove ${PKG}
+  done
 
   echo "COMMAND: zypper removerepo amdgpu"
   zypper removerepo amdgpu
   echo
 
+  echo "COMMAND: zypper removerepo amdgpu-proprietary"
+  zypper removerepo amdgpu-proprietary
+  echo
+
+  echo "COMMAND: zypper removerepo amdgpu-src"
+  zypper removerepo amdgpu-src
+  echo
+
   echo "COMMAND: zypper removerepo rocm"
   zypper removerepo rocm
+  echo
+
+  echo "COMMAND: zypper removerepo ROCm${AMDGPU_ROCM_VER}"
+  zypper removerepo ROCm${AMDGPU_ROCM_VER}
   echo
 
   echo "COMMAND: zypper removerepo amdgraphics"
@@ -137,10 +176,15 @@ case ${1} in
     uninstall_amdgpu_driver_and_rocm
   ;;
   check)
-    check_amdgpu_driver_install
+    check_amdgpu_driver
   ;;
   *)
-    install_amdgpu_driver_and_rocm
-    check_amdgpu_driver_install
+    case ${AMDGPU_INSTALL_UPSTREAM_DRIVER} in
+      true)
+        install_upstream_amdgpu_driver
+      ;;
+    esac
+    install_rocm
+    check_amdgpu_driver
   ;;
 esac
