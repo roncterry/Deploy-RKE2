@@ -11,7 +11,7 @@ install_nvidia_drivers() {
 
   if zypper lr | grep -q NVIDIA
   then
-    for NV_REPO in zypper lr | grep NVIDIA | awk '{ print $5 }'
+    for NV_REPO in $(zypper lr | grep NVIDIA | awk '{ print $5 }')
     do
       echo "COMMAND: zypper mr -e ${NV_REPO}"
       zypper mr -e ${NV_REPO}
@@ -65,6 +65,7 @@ then
   install_nvidia_drivers
   run_nvidia_smi
 elif echo ${*} | grep -q "--force"
+then
   echo
   echo "ERROR: No NVIDIA GPU found. Installing the drivers anyway."
   echo
