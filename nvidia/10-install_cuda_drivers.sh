@@ -64,7 +64,7 @@ if lspci | grep -qi nvidia
 then
   install_nvidia_drivers
   run_nvidia_smi
-elif echo ${*} | grep -q "--force"
+elif echo ${*} | grep -q "force"
 then
   echo
   echo "ERROR: No NVIDIA GPU found. Installing the drivers anyway."
