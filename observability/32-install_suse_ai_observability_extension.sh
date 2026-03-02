@@ -17,9 +17,9 @@ else
   OBSERVABILITY_NAMESPACE=suse-observability
   OBSERVABILITY_HOST=observability.example.com
   OBSERVABILITY_BASEURL=http://${OBSERVABILITY_HOST}
-  OBSERVABILITY_INSTALL_API_KEY=
+  OBSERVABILITY_INSTALL_API_KEY=$(grep -m 1 "^ *key:" suse-observability-values/templates/baseConfig_values.yaml | awk '{ print $2 }' | cut -d \" -f 2)
   OBSERVABILITY_API_TOKEN=
-  OBSERVABILITY_API_TOKEN_TYPE=
+  OBSERVABILITY_API_TOKEN_TYPE=api
   OBSERVABILITY_OBSERVED_CLUSTER_NAME=aicluster01
 fi
 
@@ -190,8 +190,8 @@ create_ai_extension_custom_overrides_file() {
   imagePullSecrets:
   - ${IMAGE_PULL_SECRET_NAME}
 serverUrl: ${OBSERVABILITY_BASEURL}
-apiKey: ${OBSERVABILITY_API_KEY}
-apiToken: ${OBSERVABILITY_INSTALL_API_TOKEN}
+apiKey: ${OBSERVABILITY_INSTALL_API_KEY}
+apiToken: ${OBSERVABILITY_API_TOKEN}
 tokenType: ${OBSERVABILITY_API_TOKEN_TYPE}
 clusterName: ${OBSERVABILITY_OBSERVED_CLUSTER_NAME}
  " > ${CUSTOM_OVERRIDES_FILE}
