@@ -319,7 +319,10 @@ case ${RANCHER_TLS_SOURCE} in
     install_rancher
   ;;
   *)
-    install_certmanager
+    if ! kubectl get namespaces | grep -q cert-manager
+    then
+      install_certmanager
+    fi
     install_rancher
   ;;
 esac
