@@ -12,6 +12,7 @@ then
     source ${CONFIG_FILE}
   fi
 else
+  FS_INOTIFY_MAX_USER_INSTANCES=1024
   K8S_DISTRO=rke2
   K8S_DISTRO_CHANNEL=v1.30
   CLUSTER_NAME=aicluster01
@@ -71,9 +72,9 @@ create-kubevip-manifest() {
 }
 
 install_k8s_distro() {
-  echo "Setting sysctl fs.inotify.max_user_instances=1024"
-  echo "fs.inotify.max_user_instances=1024" > /etc/sysctl.d/50-fs_inotify_max_user_instances.conf
-  sysctl fs.inotify.max_user_instances=1024
+  echo "Setting sysctl fs.inotify.max_user_instances=${FS_INOTIFY_MAX_USER_INSTANCES}"
+  echo "fs.inotify.max_user_instances=${FS_INOTIFY_MAX_USER_INSTANCES}" > /etc/sysctl.d/50-fs_inotify_max_user_instances.conf
+  sysctl fs.inotify.max_user_instances=${FS_INOTIFY_MAX_USER_INSTANCES}
   echo
 
   echo "Downloading ${K8S_DISTRO} installer ..."
