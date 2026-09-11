@@ -27,7 +27,7 @@ else
   RANCHER_REPLICAS=1
   RANCHER_TLS_SOURCE="rancher"
   RANCHER_TLS_EMAIL="admin@example.com"
-  RANCHER_TLS_INGRESS_CLASS="nginx"
+  RANCHER_TLS_INGRESS_CLASS="traefik"
   RANCHER_TLS_CERT_FILE=
   RANCHER_TLS_KEY_FILE=
   RANCHER_TLS_CA_FILE=
@@ -297,8 +297,10 @@ install_rancher() {
   helm repo update
 
   echo
-  echo "COMMAND: helm upgrade --install rancher rancher-prime/rancher --namespace cattle-system --create-namespace --set hostname=${RANCHER_HOSTNAME} --set bootstrapPassword=${RANCHER_ADMIN_PW} --set replicas=${RANCHER_REPLICAS} ${RANCHER_CERT_ARGS} --set ingress.ingressClassName=nginx ${RANCHER_VER_ARG}"
-  helm upgrade --install rancher rancher-prime/rancher --namespace cattle-system --create-namespace --set hostname=${RANCHER_HOSTNAME} --set bootstrapPassword=${RANCHER_ADMIN_PW} --set replicas=${RANCHER_REPLICAS} ${RANCHER_CERT_ARGS} --set ingress.ingressClassName=nginx ${RANCHER_VER_ARG}
+  #echo "COMMAND: helm upgrade --install rancher rancher-prime/rancher --namespace cattle-system --create-namespace --set hostname=${RANCHER_HOSTNAME} --set bootstrapPassword=${RANCHER_ADMIN_PW} --set replicas=${RANCHER_REPLICAS} ${RANCHER_CERT_ARGS} --set ingress.ingressClassName=traefik ${RANCHER_VER_ARG}"
+  #helm upgrade --install rancher rancher-prime/rancher --namespace cattle-system --create-namespace --set hostname=${RANCHER_HOSTNAME} --set bootstrapPassword=${RANCHER_ADMIN_PW} --set replicas=${RANCHER_REPLICAS} ${RANCHER_CERT_ARGS} --set ingress.ingressClassName=traefik ${RANCHER_VER_ARG}
+  echo "COMMAND: helm upgrade --install rancher rancher-prime/rancher --namespace cattle-system --create-namespace --set hostname=${RANCHER_HOSTNAME} --set bootstrapPassword=${RANCHER_ADMIN_PW} --set replicas=${RANCHER_REPLICAS} ${RANCHER_CERT_ARGS} ${RANCHER_VER_ARG}"
+  helm upgrade --install rancher rancher-prime/rancher --namespace cattle-system --create-namespace --set hostname=${RANCHER_HOSTNAME} --set bootstrapPassword=${RANCHER_ADMIN_PW} --set replicas=${RANCHER_REPLICAS} ${RANCHER_CERT_ARGS} ${RANCHER_VER_ARG}
 
   echo
   echo "COMMAND: kubectl -n cattle-system rollout status deploy/rancher"
