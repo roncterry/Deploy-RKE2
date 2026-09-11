@@ -3,7 +3,10 @@
 K8S_DISTRO="rke2"
 NODE_TYPE="agent"
 
-if [ -d /opt/${K8S_DISTRO}/bin ]
+if [ -e /usr/bin/rke2 ]
+then
+  BIN_PATH=/usr/bin/
+elif [ -e /opt/${K8S_DISTRO}/bin/rke2 ]
 then
   BIN_PATH=/opt/${K8S_DISTRO}/bin/
 else
