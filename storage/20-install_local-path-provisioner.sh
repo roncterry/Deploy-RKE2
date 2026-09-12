@@ -1,7 +1,44 @@
 #!/bin/bash
 
-LPP_INSTALL_URL="https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml"
-LPP_IS_DEFAULT_STORAGECLASS="true"
+##############################################################################
+# You can either source in the variables from a common config file or
+# set the them in this script.
+
+CONFIG_FILE=deploy_storage.cfg
+
+if ! [ -z ${CONFIG_FILE} ]
+then
+  if [ -e ${CONFIG_FILE} ]
+  then
+    source ${CONFIG_FILE}
+  fi
+else
+  LPP_MANIFEST_URL="https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml"
+  LPP_IS_DEFAULT_STORAGECLASS="true"
+fi
+
+LICENSES_FILE=../authentication_and_licenses.cfg
+
+##############################################################################
+
+check_for_kubectl() {
+  if ! echo $* | grep -q force
+  then
+   if ! which kubectl > /dev/null
+   then
+     echo
+     echo "ERROR: This must be run on a machine with the kubectl command installed."
+     echo "       Run this script on a control plane node or management machine."
+     echo
+     echo "       Exiting."
+     echo
+     exit
+   fi
+  fi
+}
+
+##############################################################################
+
 
 ###############################################################################
 #   Functions
@@ -42,5 +79,6 @@ display_storage_classes() {
 
 ###############################################################################
 
+check_for_kubectl
 deploy_local_path_provisioner
 display_storage_classes
