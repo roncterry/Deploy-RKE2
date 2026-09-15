@@ -44,13 +44,16 @@ fi
 ##############################################################################
 
 retrieve_kubectl() {
-  echo "COMMAND: ${SUDO_CMD} scp root@${NODE01}:/var/lib/rancher/${K8S_DISTRO}/bin/kubectl /usr/local/bin/"
-  ${SUDO_CMD} scp root@${NODE01}:/var/lib/rancher/${K8S_DISTRO}/bin/kubectl /usr/local/bin/
-  echo
-
-  echo "COMMAND: ${SUDO_CMD} chmod +x /usr/local/bin/kubectl"
-  ${SUDO_CMD} chmod +x /usr/local/bin/kubectl
-  echo
+  if [ -e "/var/lib/rancher/${K8S_DISTRO}/bin/kubectl" ]
+  then
+    echo "COMMAND: ${SUDO_CMD} scp root@${NODE01}:/var/lib/rancher/${K8S_DISTRO}/bin/kubectl /usr/local/bin/"
+    ${SUDO_CMD} scp root@${NODE01}:/var/lib/rancher/${K8S_DISTRO}/bin/kubectl /usr/local/bin/
+    echo
+ 
+    echo "COMMAND: ${SUDO_CMD} chmod +x /usr/local/bin/kubectl"
+    ${SUDO_CMD} chmod +x /usr/local/bin/kubectl
+    echo
+  fi
 }
 
 retrieve_kubeconfig() {
