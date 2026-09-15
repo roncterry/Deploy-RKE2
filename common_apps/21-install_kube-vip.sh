@@ -219,9 +219,6 @@ install_kubevip() {
     helm repo add kube-vip ${KUBEVIP_HELM_REPO}
     helm repo update"
  
-    helm repo add kube-vip ${KUBEVIP_HELM_REPO}
-    helm repo update
- 
     echo
     echo "COMMAND: helm upgrade --install kube-vip kube-vip/kube-vip --namespace ${KUBEVIP_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${KUBEVIP_VER_ARG}"
     helm upgrade --install kube-vip kube-vip/kube-vip --namespace ${KUBEVIP_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${KUBEVIP_VER_ARG}
@@ -247,7 +244,7 @@ install_kubevip() {
 
 check_for_kubectl
 check_for_helm
-if helm list -n ${KUBEVIP_NAMESPACE} | grep -q kube-vip
+if kubectl get pods -A | grep -q kube-vip
 then
   echo
   echo "Kube-VIP is already installed. Exiting."
