@@ -24,8 +24,15 @@ else
   EXTERNAL_INGRESS_CONTROLLER_NAMESPACE=kube-system
   EXTERNAL_INGRESS_CONTROLLER_KIND=DaemonSet
   EXTERNAL_INGRESS_CONTROLLER_REPLICAS=1
-  INSTALL_KUBEVIP=false
+  INSTALL_RKE2_KUBEVIP=false
+  RKE2_CLUSTER_VIP_KUBEVIP_HELM_REPO="https://kube-vip.github.io/helm-charts"
+  RKE2_CLUSTER_VIP_KUBEVIP_VERSION=
+  RKE2_CLUSTER_VIP_NAMESPACE=kube-vip
   RKE2_CLUSTER_VIP=
+  RKE2_CLUSTER_VIP_INTERFACE=
+  RKE2_CLUSTER_VIP_CP_ENABLE=true
+  RKE2_CLUSTER_VIP_LEADERELECTION=true
+  RKE2_CLUSTER_VIP_HOSTNAME=
 fi
 
 #------------------------------------------------------------------------------
@@ -61,15 +68,37 @@ check_for_helm() {
   fi
 }
 
-create-kubevip-manifest() {
-  local VIP_INTERFACE=$(ip r | grep "^default" | awk '{ print $5 }')
-
-  curl -sL kube-vip.io/k3s |  vipAddress=${RKE2_CLUSTER_VIP} vipInterface=${VIP_INTERFACE} sh | sudo tee /var/lib/rancher/rke2/server/manifests/kubevip.yaml
-  sed -i 's/k3s/rke2/g' /var/lib/rancher/rke2/server/manifests/kubevip.yaml
-
-  echo "---" >> /var/lib/rancher/rke2/server/manifests/kubevip.yaml
-  curl -sL https://kube-vip.io/manifests/rbac.yaml >> /var/lib/rancher/rke2/server/manifests/kubevip.yaml
-}
+#create_kubevip_rke2_helm_manifest() {
+#  echo "COMMAND: mkdir -p /var/lib/rancher/rke2/server/manifests/"
+#  mkdir -p /var/lib/rancher/rke2/server/manifests/
+#
+#  echo "
+#apiVersion: helm.cattle.io/v1
+#kind: HelmChart
+#metadata:
+#  name: kube-vip
+#  namespace: kube-system
+#spec:
+#  chart: kube-vip
+#  repo: https://kube-vip.github.io/helm-charts
+#  targetNamespace: ${RKE2_CLUSTER_VIP_NAMESPACE}
+#  valuesContent: |-
+#    hostNetwork: true
+#    tolerations:
+#      - effect: NoSchedule
+#        operator: Exists
+#      - effect: NoExecute
+#        operator: Exists
+#    config:
+#      address: \"${RKE2_CLUSTER_VIP}\"
+#    env:
+#      vip_arp: \"true\"
+#      vip_interface: \"${RKE2_CLUSTER_VIP_INTERFACE}\"
+#      cp_enable: \"${RKE2_CLUSTER_VIP_CP_ENABLE}\"
+#      vip_leaderelection: \"${RKE2_CLUSTER_VIP_LEADERELECTION}\"
+#    nodeSelector:
+#      node-role.kubernetes.io/control-plane: \"${RKE2_CLUSTER_VIP_CP_ENABLE}\"" > /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
+#}
 
 install_k8s_distro() {
   echo "Setting sysctl fs.inotify.max_user_instances=${FS_INOTIFY_MAX_USER_INSTANCES}"
@@ -330,30 +359,50 @@ install_external_ingress_controller() {
   esac
 }
 
-install_kubevip() {
-  local KUBEVIP_HELM_REPO_URL=https://kube-vip.github.io/helm-charts
+create_rke2_kubevip_custom_overrides_file() {
+  CUSTOM_OVERRIDES_FILE=rke2_kubevip_custom_overrides.yaml
+
+  echo "Writing out ${CUSTOM_OVERRIDES_FILE} file ..."
+  echo
+  echo "
+config:
+  address: \"${RKE2_CLUSTER_VIP}\" 
+env:
+  vip_interface: \"${RKE2_CLUSTER_VIP_INTERFACE}\"
+  cp_enable: \"${RKE2_CLUSTER_VIP_CP_ENABLE}\"
+  vip_leaderelection: \"${RKE2_CLUSTER_VIP_LEADERELECTION}\"
+nodeSelector:
+  node-role.kubernetes.io/control-plane: \"${RKE2_CLUSTER_VIP_CP_ENABLE}\"" > ${CUSTOM_OVERRIDES_FILE}
+}
+
+display_custom_overrides_file() {
+  echo
+  cat ${CUSTOM_OVERRIDES_FILE}
+  echo
+}
+
+install_rke2_kubevip() {
+  local RKE2_CLUSTER_VIP_KUBEVIP_HELM_REPO_URL=https://kube-vip.github.io/helm-charts
+
+  if ! [ -z ${RKE2_CLUSTER_VIP_KUBEVIP_VERSION} ]
+  then
+    local RKE2_CLUSTER_VIP_KUBEVIP_VER_ARG="--version ${RKE2_CLUSTER_VIP_KUBEVIP_VERSION}"
+  fi
 
   echo "Installing kube-vip ..."
   echo
-  if ! kubectl get pod -A | grep -q kube-vip
-  then
-    echo "COMMANDS: helm repo add kube-vip ${KUBEVIP_HELM_REPO_URL}
-            helm repo update"
-    helm repo add kube-vip ${KUBEVIP_HELM_REPO_URL}
-    helm repo update
-    echo
- 
-    echo "COMMAND: helm upgrade --install kube-vip kube-vip/kube-vip --namespace kube-system"
-    helm upgrade --install kube-vip kube-vip/kube-vip --namespace kube-system
-    echo
- 
-    echo "COMMAND: helm upgrade --install kube-vip-cloud-provider kube-vip/kube-vip-cloud-provider --namespace kube-system --set cm.data.cidr-${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE}=${RKE2_CLUSTER_VIP}"
-    helm upgrade --install kube-vip-cloud-provider kube-vip/kube-vip-cloud-provider --namespace kube-system --set cm.data.cidr-${EXTERNAL_INGRESS_CONTROLLER_NAMESPACE}=${RKE2_CLUSTER_VIP}
-    echo
-  else
-    echo "(kube-vip already installed)"
-    echo
-  fi
+
+  create_rke2_kubevip_custom_overrides_file
+  display_custom_overrides_file
+
+  echo "COMMAND: 
+  helm repo add kube-vip ${KUBEVIP_HELM_REPO}
+  helm repo update"
+
+  echo
+  echo "COMMAND: helm upgrade --install kube-vip kube-vip/kube-vip --namespace ${RKE2_CLUSTER_VIP_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${RKE2_CLUSTER_VIP_KUBEVIP_VER_ARG}"
+  helm upgrade --install kube-vip kube-vip/kube-vip --namespace ${RKE2_CLUSTER_VIP_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${RKE2_CLUSTER_VIP_KUBEVIP_VER_ARG}
+  echo
 }
 
 ###############################################################################
@@ -373,12 +422,19 @@ esac
 
 wait_for_essential_cluster_services_to_be_ready
 
-#case ${INSTALL_KUBEVIP} in
-#  true)
-#    check_for_helm
-#    install_kubevip
-#  ;;
-#esac
+case ${INSTALL_RKE2_KUBEVIP} in
+  true)
+    if kubectl get pods -A | grep -q kube-vip
+    then
+      echo
+      echo "Kube-VIP is already installed. Continuing ..."
+      echo
+    else
+      check_for_helm
+      install_rke2_kubevip
+    fi
+  ;;
+esac
  
 echo "-----  The cluster is installed and running  -----"
 echo
