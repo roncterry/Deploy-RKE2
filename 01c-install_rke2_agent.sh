@@ -141,6 +141,8 @@ install_k8s_distro() {
           fi
           echo "write-kubeconfig-mode: 600" >> /etc/rancher/${K8S_DISTRO}/config.yaml
           echo "ingress-controller: ${BUILTIN_INGRESS_CONTROLLER}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          echo "cni: ${RKE2_CNI}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          echo "selinux: ${RKE2_SELINUX_ENABLED}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
 
           #case ${INSTALL_KUBEVIP} in
           #  true)
@@ -164,6 +166,8 @@ install_k8s_distro() {
           fi
           echo "write-kubeconfig-mode: 600" >> /etc/rancher/${K8S_DISTRO}/config.yaml
           echo "ingress-controller: ${BUILTIN_INGRESS_CONTROLLER}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          echo "cni: ${RKE2_CNI}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
+          echo "selinux: ${RKE2_SELINUX_ENABLED}" >> /etc/rancher/${K8S_DISTRO}/config.yaml
         ;;
       esac
 
