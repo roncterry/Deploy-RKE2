@@ -403,8 +403,10 @@ install_rke2_kubevip() {
   display_custom_overrides_file
 
   echo "COMMAND: 
-  helm repo add kube-vip ${KUBEVIP_HELM_REPO}
+  helm repo add kube-vip ${RKE2_CLUSTER_VIP_KUBEVIP_HELM_REPO}
   helm repo update"
+  helm repo add kube-vip ${RKE2_CLUSTER_VIP_KUBEVIP_HELM_REPO}
+  helm repo update
 
   echo
   echo "COMMAND: helm upgrade --install kube-vip kube-vip/kube-vip --namespace ${RKE2_CLUSTER_VIP_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} ${RKE2_CLUSTER_VIP_KUBEVIP_VER_ARG}"
