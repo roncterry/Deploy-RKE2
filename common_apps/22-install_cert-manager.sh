@@ -179,20 +179,21 @@ patch_serviceaccounts() {
   echo
 }
 
-#install_certmanager_crds() {
-#  echo
-#  echo "COMMAND: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.6.2/cert-manager.crds.yaml"
-#  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.6.2/cert-manager.crds.yaml
-#  echo
-#}
-
 create_certmanager_base_custom_overrides_file() {
   echo "Writing out ${CUSTOM_OVERRIDES_FILE} file ..."
   echo
-  echo "
+  if ! [ -z ${CERTMANAGER_HELM_CHART} ]
+  then
+    if ! [ -z ${IMAGE_PULL_SECRET_NAME} ]
+    then
+      echo "
 global:
   imagePullSecrets:
   - ${IMAGE_PULL_SECRET_NAME}" > ${CUSTOM_OVERRIDES_FILE}
+    fi
+  else
+    touch ${CUSTOM_OVERRIDES_FILE}
+  fi
 }
 
 display_custom_overrides_file() {
@@ -219,8 +220,12 @@ install_certmanager() {
     helm repo update
  
     echo
-    echo "COMMAND: helm upgrade --install cert-manager cert-manager/cert-manager --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set crds.enabled=true ${CERTMANAGER_VER_ARG}"
-    helm upgrade --install cert-manager cert-manager/cert-manager --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set crds.enabled=true ${CERTMANAGER_VER_ARG}
+    create_certmanager_base_custom_overrides_file
+    display_custom_overrides_file
+
+    echo
+    echo "COMMAND: helm upgrade --install cert-manager cert-manager/cert-manager --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set crds.enabled=true -f ${CUSTOM_OVERRIDES_FILE} ${CM_VER_ARG}"
+    helm upgrade --install cert-manager cert-manager/cert-manager --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set crds.enabled=true -f ${CUSTOM_OVERRIDES_FILE} ${CM_VER_ARG}
   else
     log_into_app_collection
     create_app_collection_secret
@@ -228,13 +233,13 @@ install_certmanager() {
     create_certmanager_base_custom_overrides_file
     display_custom_overrides_file
 
-    echo "COMMAND: helm upgrade --install cert-manager ${CERTMANAGER_HELM_CHART} --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} --set crds.enabled=true ${CERTMANAGER_VER_ARG}"
-    helm upgrade --install cert-manager ${CERTMANAGER_HELM_CHART} --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} --set crds.enabled=true ${CERTMANAGER_VER_ARG}
+    echo "COMMAND: helm upgrade --install cert-manager ${CERTMANAGER_HELM_CHART} --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} --set crds.enabled=true -f ${CUSTOM_OVERRIDES_FILE} ${CM_VER_ARG}"
+    helm upgrade --install cert-manager ${CERTMANAGER_HELM_CHART} --namespace ${CERTMANAGER_NAMESPACE} --create-namespace --set 'global.imagePullSecrets[0].name'=${IMAGE_PULL_SECRET_NAME} --set crds.enabled=true -f ${CUSTOM_OVERRIDES_FILE} ${CM_VER_ARG}
   fi
 
   #echo
-  #echo "COMMAND: helm upgrade --install cert-manager oci://dp.apps.rancher.io/charts/cert-manager --namespace ${CERTMANAGER_NAMESPACE} -f ${CUSTOM_OVERRIDES_FILE} --create-namespace --set crds.enabled=true ${CM_VER_ARG}"
-  #helm upgrade --install cert-manager oci://dp.apps.rancher.io/charts/cert-manager --namespace ${CERTMANAGER_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} --set crds.enabled=true ${CM_VER_ARG}
+  #echo "COMMAND: helm upgrade --install cert-manager oci://dp.apps.rancher.io/charts/cert-manager --namespace ${CERTMANAGER_NAMESPACE} -f ${CUSTOM_OVERRIDES_FILE} --create-namespace --set crds.enabled=true -f ${CUSTOM_OVERRIDES_FILE} ${CM_VER_ARG}"
+  #helm upgrade --install cert-manager oci://dp.apps.rancher.io/charts/cert-manager --namespace ${CERTMANAGER_NAMESPACE} --create-namespace -f ${CUSTOM_OVERRIDES_FILE} --set crds.enabled=true -f ${CUSTOM_OVERRIDES_FILE} ${CM_VER_ARG}
 
   echo
   echo "COMMAND: kubectl -n ${CERTMANAGER_NAMESPACE} rollout status deploy/cert-manager"
